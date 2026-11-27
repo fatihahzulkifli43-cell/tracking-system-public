@@ -1,0 +1,2385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f1420">
+<title>Money Tracker</title>
+<style>
+  /* ============================================================
+     DESIGN SYSTEM — warm cream, coral accent, charcoal ink
+     Colours: every text/background pair below meets WCAG AA (≥4.5:1).
+     Radii: cards 18px, controls 12–14px. Spacing: 4/8/12/16 scale.
+     ============================================================ */
+  :root{
+    --outside:#ece6de;                 /* desktop area around the app column */
+    --bg:#fdf8f3; --surface:#ffffff; --surface-2:#f7f2ec;
+    --ink:#24302e; --ink-soft:#63706b; --ink-faint:#a3aca8; --line:#f1ebe4;
+    --accent:#c84b38; --accent-ink:#b84432; --accent-soft:#fde9e3; --accent-line:#f6d3c9;
+    --pos:#157a50; --neg:#c4473a;
+    --lavender:#ece8fb; --lavender-ink:#5a49b8; --lavender-strong:var(--accent);
+    --sky:#e3effb;      --sky-ink:#2a68ad;
+    --mint:#dff4e9;     --mint-ink:#157a50;
+    --peach:#fde9dc;    --peach-ink:#a8481f;
+    --yellow:#fdf3cf;   --yellow-ink:#7d6200;
+    --rose:#fde4ea;     --rose-ink:#b83a5a;
+    --grey:#f1eeea;     --grey-ink:#5e6a66;
+    /* aliases kept for existing markup */
+    --card:var(--surface); --card-muted:var(--surface-2); --text-main:var(--ink); --text-soft:var(--ink-soft);
+    --green:var(--pos); --red:var(--neg); --blue:var(--sky-ink);
+    --radius-xl:22px; --radius-lg:18px; --radius-md:14px; --radius-sm:12px;
+    --shadow:0 1px 2px rgba(36,48,46,.04), 0 4px 14px rgba(36,48,46,.05);
+    --font:"Inter",-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --nav-h:66px;
+    --app-w:480px;                     /* portrait app column */
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; padding:0; overflow-x:hidden; }
+  body{ font-family:var(--font); background:var(--bg); color:var(--ink); min-height:100vh; -webkit-font-smoothing:antialiased;
+        padding-bottom:calc(var(--nav-h) + 86px + env(safe-area-inset-bottom)); }
+  button,input,select,textarea{ font-family:var(--font); color:inherit; }
+  button{ cursor:pointer; }
+  svg.i{ fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; flex:0 0 auto; display:block; }
+  .num{ font-variant-numeric:tabular-nums; }
+
+  /* ---------- tones (icon badges, cards) ---------- */
+  .t-lavender{ background:var(--lavender); color:var(--lavender-ink); }
+  .t-sky{ background:var(--sky); color:var(--sky-ink); }
+  .t-mint{ background:var(--mint); color:var(--mint-ink); }
+  .t-peach{ background:var(--peach); color:var(--peach-ink); }
+  .t-yellow{ background:var(--yellow); color:var(--yellow-ink); }
+  .t-rose{ background:var(--rose); color:var(--rose-ink); }
+  .t-grey{ background:var(--grey); color:var(--grey-ink); }
+  .ibadge{ width:40px; height:40px; border-radius:13px; display:inline-flex; align-items:center; justify-content:center; flex:0 0 40px; }
+  .ibadge.sm{ width:32px; height:32px; flex-basis:32px; border-radius:10px; }
+  .ibadge.sm svg{ width:17px; height:17px; }
+
+  /* ---------- Header ---------- */
+  .topbar{ position:sticky; top:0; z-index:20; background:rgba(245,244,251,.9); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+           padding-top:env(safe-area-inset-top); }
+  .topbar-inner{ max-width:620px; margin:0 auto; padding:12px 16px 8px; display:flex; align-items:center; gap:10px; }
+  .brand-wrap{ flex:1 1 auto; min-width:0; display:flex; align-items:center; gap:10px; }
+  .logo{ width:36px; height:36px; border-radius:12px; background:var(--lavender-strong); color:#fff; display:flex; align-items:center; justify-content:center; flex:0 0 auto; }
+  .brand{ font-size:16px; font-weight:800; letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.15; }
+  .brand small{ display:block; font-size:12px; font-weight:600; color:var(--ink-soft); }
+  .month-nav{ flex:0 0 auto; display:flex; align-items:center; background:var(--surface); border-radius:999px; padding:3px; box-shadow:var(--shadow); }
+  .month-nav button{ width:32px; height:32px; border:none; border-radius:999px; background:transparent; color:var(--ink); font-size:18px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  .month-nav button:active{ background:var(--surface-2); }
+  .month-label{ width:auto !important; padding:0 6px !important; min-width:76px; white-space:nowrap; font-size:13.5px !important; font-weight:800 !important; }
+  .month-label.is-current{ color:var(--accent-ink) !important; }
+
+  .app{ max-width:620px; margin:0 auto; padding:8px 16px 8px; }
+  .view{ display:none; }
+  .view.active{ display:block; animation:fade .18s ease; }
+  @keyframes fade{ from{ opacity:.4; transform:translateY(4px); } to{ opacity:1; transform:none; } }
+  .page-title{ font-size:22px; font-weight:800; letter-spacing:-.02em; margin:6px 2px 14px; }
+
+  /* ---------- Hero: Available to spend ---------- */
+  .hero{ position:relative; overflow:hidden; background:var(--lavender-strong); color:#fff; border-radius:var(--radius-xl); padding:20px 20px 16px; margin-bottom:12px;
+         box-shadow:0 10px 24px rgba(122,106,240,.28); }
+  .hero::before,.hero::after{ content:""; position:absolute; border-radius:50%; background:rgba(255,255,255,.12); pointer-events:none; }
+  .hero::before{ width:180px; height:180px; right:-50px; top:-70px; }
+  .hero::after{ width:110px; height:110px; right:40px; bottom:-60px; background:rgba(255,255,255,.08); }
+  .hero-label{ font-size:13px; font-weight:700; opacity:.9; display:flex; align-items:center; gap:6px; position:relative; }
+  .hero-value{ font-size:36px; font-weight:800; letter-spacing:-.03em; margin:4px 0 2px; position:relative; }
+  .hero-value.neg{ color:#ffe0e6; }
+  .hero-note{ font-size:12.5px; opacity:.85; position:relative; line-height:1.4; }
+  .hero-split{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px; position:relative; }
+  .hero-split > div{ background:rgba(255,255,255,.16); border-radius:14px; padding:9px 12px; min-width:0; }
+  .hero-split span{ display:block; font-size:11.5px; font-weight:700; opacity:.85; }
+  .hero-split b{ display:block; font-size:16px; font-weight:800; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  /* ---------- Compact stat cards ---------- */
+  .duo{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+  .stat{ border-radius:var(--radius-lg); padding:12px 14px; display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .stat .top{ display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:800; }
+  .stat .top .ibadge{ background:rgba(255,255,255,.7); }
+  .stat .val{ font-size:19px; font-weight:800; letter-spacing:-.02em; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .stat small{ font-size:11.5px; color:var(--ink-soft); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  /* ---------- Cards / sections ---------- */
+  .card{ background:var(--surface); color:var(--ink); border-radius:var(--radius-lg); padding:16px; margin-bottom:12px; box-shadow:var(--shadow); }
+  .card h2,.sec-head{ font-size:15px; font-weight:800; color:var(--ink); margin:0 0 10px; display:flex; align-items:center; justify-content:space-between; gap:8px; letter-spacing:-.01em; }
+  .card h2 .link,.sec-head .link{ font-size:13px; color:var(--accent-ink); background:none; border:none; font-weight:700; padding:2px 0; }
+  .sec-sub{ font-size:12.5px; color:var(--ink-soft); font-weight:600; margin:-6px 0 10px; }
+  details.fold{ background:var(--surface); border-radius:var(--radius-lg); margin-bottom:12px; box-shadow:var(--shadow); overflow:hidden; }
+  details.fold > summary{ list-style:none; display:flex; align-items:center; gap:10px; padding:14px 16px; cursor:pointer; user-select:none; }
+  details.fold > summary::-webkit-details-marker{ display:none; }
+  details.fold > summary .sum-title{ flex:1 1 auto; font-size:15px; font-weight:800; }
+  details.fold > summary .sum-meta{ font-size:13.5px; font-weight:800; color:var(--ink-soft); white-space:nowrap; }
+  details.fold > summary .chev{ color:var(--ink-faint); transition:transform .2s ease; }
+  details.fold[open] > summary .chev{ transform:rotate(90deg); }
+  details.fold .fold-body{ padding:0 16px 14px; }
+
+  .row-line{ display:flex; justify-content:space-between; align-items:center; padding:8px 0; gap:10px; }
+  .row-line .label{ font-size:14px; color:var(--ink-soft); font-weight:600; display:flex; align-items:center; gap:8px; min-width:0; }
+  .row-line .value{ font-size:14.5px; font-weight:800; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .row-line.total{ border-top:1px solid var(--line); margin-top:4px; padding-top:11px; }
+  .row-line.total .label{ color:var(--ink); }
+  .progress{ height:8px; border-radius:999px; background:var(--surface-2); overflow:hidden; margin:2px 0 10px; }
+  .progress span{ display:block; height:100%; background:var(--mint-ink); border-radius:999px; transition:width .25s ease; }
+  .muted{ color:var(--ink-soft); font-size:13px; line-height:1.5; }
+  .pos{ color:var(--pos) !important; } .neg{ color:var(--neg) !important; }
+
+  /* ---------- Lists ---------- */
+  .list-item{ display:flex; align-items:center; gap:8px; padding:10px 0; border-bottom:1px solid var(--line); }
+  .list-item:last-child{ border-bottom:none; }
+  .li-main{ flex:1 1 auto; min-width:0; background:none; border:none; padding:0; text-align:left; display:flex; align-items:center; gap:12px; color:inherit; }
+  .li-text{ flex:1 1 auto; min-width:0; }
+  .li-title{ font-size:14.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; gap:5px; }
+  .li-title .rcpt-dot,.li-title .link-dot{ color:var(--ink-faint); display:inline-flex; }
+  .li-sub{ font-size:12.5px; color:var(--ink-soft); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .li-meta{ display:flex; align-items:center; gap:6px; margin-top:5px; flex-wrap:wrap; }
+  .li-amt{ flex:0 0 auto; text-align:right; font-size:14.5px; font-weight:800; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .li-amt small{ display:block; font-size:11.5px; font-weight:600; color:var(--ink-soft); margin-top:2px; }
+  .icon-btn{ flex:0 0 auto; width:28px; height:28px; border-radius:999px; border:none; background:transparent; color:var(--ink-faint); display:flex; align-items:center; justify-content:center; }
+  .icon-btn svg{ width:16px; height:16px; }
+  .icon-btn:hover,.icon-btn:active{ background:var(--rose); color:var(--rose-ink); }
+  .date-head{ font-size:12px; font-weight:800; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.05em; padding:12px 0 2px; }
+  .date-head:first-child{ padding-top:0; }
+
+  .chip{ display:inline-flex; align-items:center; gap:4px; font-size:11.5px; font-weight:800; padding:3px 8px; border-radius:999px; white-space:nowrap; }
+  .chip svg{ width:12px; height:12px; stroke-width:2.4; }
+  .chip.paid{ background:var(--mint); color:var(--mint-ink); }
+  .chip.partial{ background:var(--yellow); color:var(--yellow-ink); }
+  .chip.pending{ background:var(--sky); color:var(--sky-ink); }
+  .chip.overdue{ background:var(--rose); color:var(--rose-ink); }
+  .chip.over{ background:var(--lavender); color:var(--lavender-ink); }
+  .chip.soft{ background:var(--surface-2); color:var(--ink-soft); }
+
+  .filters{ display:flex; gap:6px; overflow-x:auto; padding:0 2px 12px; scrollbar-width:none; }
+  .filters::-webkit-scrollbar{ display:none; }
+  .filter{ flex:0 0 auto; border:none; background:var(--surface); color:var(--ink-soft); font-size:13px; font-weight:700; padding:8px 13px; border-radius:999px; box-shadow:var(--shadow); }
+  .filter.active{ background:var(--ink); color:#fff; }
+
+  .add-btn{ width:100%; padding:11px; border-radius:var(--radius-md); border:1.5px dashed #e6d9cd; background:transparent; color:var(--accent-ink); font-size:14px; font-weight:800; margin-top:8px; display:flex; align-items:center; justify-content:center; gap:6px; }
+  .add-btn svg{ width:18px; height:18px; }
+  .add-btn:active{ background:var(--accent-soft); }
+  .btn{ border:none; border-radius:var(--radius-md); padding:12px 14px; font-size:14px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; gap:6px; }
+  .btn svg{ width:18px; height:18px; }
+  .btn:active{ transform:scale(.98); }
+  .btn.primary{ background:var(--accent); color:#fff; }
+  .btn.secondary{ background:var(--surface-2); color:var(--ink); }
+  .btn.danger{ background:var(--neg); color:#fff; }
+  .btn.ghost-danger{ background:var(--rose); color:var(--rose-ink); }
+  .btn.small{ padding:7px 12px; font-size:12.5px; border-radius:999px; }
+  .btn.pay{ background:var(--mint); color:var(--mint-ink); }
+  .btn-row{ display:flex; gap:8px; flex-wrap:wrap; }
+  .btn-row .btn{ flex:1 1 auto; }
+
+  .empty{ text-align:center; padding:20px 10px; color:var(--ink-soft); font-size:13.5px; line-height:1.55; }
+  .empty .big{ width:56px; height:56px; border-radius:18px; margin:0 auto 10px; display:flex; align-items:center; justify-content:center; }
+  .empty .big svg{ width:28px; height:28px; }
+  .empty b{ color:var(--ink); font-size:16px; }
+  .empty .btn{ margin-top:10px; }
+
+  /* ---------- Bottom navigation + add button ---------- */
+  .bottom-nav{ position:fixed; left:0; right:0; bottom:0; z-index:30; background:rgba(255,255,255,.96); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+               box-shadow:0 -4px 20px rgba(29,35,80,.06); padding-bottom:env(safe-area-inset-bottom); }
+  .bottom-nav-inner{ max-width:620px; margin:0 auto; display:grid; grid-template-columns:repeat(5,1fr); height:var(--nav-h); }
+  .nav-btn{ border:none; background:none; color:var(--ink-faint); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; font-size:11px; font-weight:700; }
+  .nav-btn .nav-ic{ width:44px; height:28px; border-radius:999px; display:flex; align-items:center; justify-content:center; transition:background .15s ease; }
+  .nav-btn svg{ width:21px; height:21px; }
+  .nav-btn.active{ color:var(--accent-ink); }
+  .nav-btn.active .nav-ic{ background:var(--accent-soft); }
+  .fab{ position:fixed; z-index:31; right:max(16px, calc(50vw - 294px)); bottom:calc(var(--nav-h) + 14px + env(safe-area-inset-bottom));
+        width:54px; height:54px; border-radius:18px; border:none; background:var(--ink); color:#fff; display:flex; align-items:center; justify-content:center;
+        box-shadow:0 10px 22px rgba(29,35,80,.28); }
+  .fab svg{ width:26px; height:26px; stroke-width:2.2; }
+  .fab:active{ transform:scale(.95); }
+
+  /* ---------- Sheets (bottom modal) ---------- */
+  .overlay{ position:fixed; inset:0; background:rgba(29,35,80,.35); display:none; align-items:flex-end; justify-content:center; z-index:100; }
+  .overlay.show{ display:flex; }
+  .sheet{ background:var(--surface); color:var(--ink); width:100%; max-width:560px; max-height:92vh; overflow-y:auto; border-radius:26px 26px 0 0;
+          padding:10px 18px calc(18px + env(safe-area-inset-bottom)); box-shadow:0 -10px 30px rgba(29,35,80,.18); animation:slideUp .2s ease; }
+  .sheet::before{ content:""; display:block; width:40px; height:4px; border-radius:4px; background:#dcdbe9; margin:0 auto 12px; }
+  @media (min-width:700px){ .overlay{ align-items:center; } .sheet{ border-radius:26px; } .sheet::before{ display:none; } }
+  @keyframes slideUp{ from{ transform:translateY(24px); opacity:.6; } to{ transform:none; opacity:1; } }
+  .sheet-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .sheet-head h3{ margin:0; font-size:18px; font-weight:800; letter-spacing:-.01em; }
+  .sheet-close{ width:32px; height:32px; border-radius:999px; border:none; background:var(--surface-2); color:var(--ink-soft); font-size:14px; font-weight:800; }
+  .sheet p.msg{ margin:0 0 16px; font-size:14px; color:var(--ink-soft); line-height:1.5; white-space:pre-line; }
+  .sheet h4{ color:var(--ink-faint) !important; }
+
+  /* ---------- Forms ---------- */
+  .field{ margin-bottom:10px; min-width:0; }
+  .field label{ display:block; font-size:12px; font-weight:700; color:var(--ink-soft); margin:0 0 5px 2px; }
+  .field input,.field select,.field textarea{ width:100%; border:1.5px solid transparent; background:var(--surface-2); border-radius:var(--radius-sm);
+           padding:11px 12px; font-size:16px; font-weight:600; color:var(--ink); outline:none; -webkit-appearance:none; appearance:none; min-height:46px; }
+  .field select{ background-image:linear-gradient(45deg,transparent 50%,#8f9a96 50%),linear-gradient(135deg,#8f9a96 50%,transparent 50%);
+           background-position:calc(100% - 16px) 52%,calc(100% - 11px) 52%; background-size:5px 5px; background-repeat:no-repeat; padding-right:28px; }
+  .field input:focus,.field select:focus,.field textarea:focus{ border-color:var(--lavender-strong); background:#fff; }
+  .field.invalid input,.field.invalid select{ border-color:var(--rose-ink); background:#fff7f8; }
+  .field .err{ display:none; font-size:12px; color:var(--rose-ink); font-weight:700; margin:4px 0 0 2px; }
+  .field.invalid .err{ display:block; }
+  .field .hint{ font-size:12px; color:var(--ink-soft); margin:4px 0 0 2px; line-height:1.4; }
+  .frow{ display:flex; gap:8px; }
+  .frow > .field{ flex:1 1 0; }
+  .frow > .field.amt{ flex:0 0 44%; }
+  .amount-input{ position:relative; }
+  .amount-input span{ position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:14px; font-weight:800; color:var(--ink-faint); pointer-events:none; }
+  .amount-input input{ padding-left:38px !important; font-weight:800 !important; }
+  .type-income select{ color:var(--mint-ink); } .type-expense select{ color:var(--peach-ink); } .type-transfer select{ color:var(--accent-ink); }
+  .type-deposit select{ color:var(--sky-ink); } .type-withdrawal select{ color:var(--yellow-ink); }
+  @media (max-width:340px){ .frow.wrap-xs{ flex-wrap:wrap; } .frow.wrap-xs > .field{ flex:1 1 100%; } }
+
+  .receipt-area{ display:flex; align-items:center; gap:10px; background:var(--surface-2); border-radius:var(--radius-sm); padding:7px 8px 7px 10px; margin-bottom:12px; min-height:48px; flex-wrap:wrap; }
+  .receipt-area .thumb{ width:38px; height:38px; border-radius:9px; object-fit:cover; background:#e2e0ef; flex:0 0 auto; cursor:pointer; }
+  .receipt-area .r-text{ flex:1 1 auto; font-size:13px; font-weight:700; color:var(--ink-soft); min-width:0; }
+  .pick{ position:relative; overflow:hidden; display:inline-flex; align-items:center; gap:6px; border:none; background:#fff; color:var(--ink);
+         border-radius:999px; padding:7px 12px; font-size:12.5px; font-weight:800; white-space:nowrap; box-shadow:var(--shadow); }
+  .pick svg{ width:16px; height:16px; }
+  .pick input{ position:absolute; inset:0; opacity:0; font-size:16px; cursor:pointer; }
+  .link-btn{ border:none; background:none; color:var(--accent-ink); font-size:12.5px; font-weight:800; padding:6px 4px; }
+  .link-btn.red{ color:var(--rose-ink); }
+  .sheet-actions{ display:flex; gap:8px; margin-top:6px; }
+  .sheet-actions .btn{ flex:1; }
+  .sheet-actions .btn.del{ flex:0 0 auto; background:var(--rose); color:var(--rose-ink); }
+  .row-line input[type=checkbox]{ accent-color:var(--lavender-strong); }
+
+  .toast{ position:fixed; left:50%; bottom:calc(var(--nav-h) + 16px + env(safe-area-inset-bottom)); transform:translateX(-50%) translateY(20px); opacity:0;
+          background:var(--ink); color:#fff; padding:10px 16px; border-radius:999px; font-size:13.5px; font-weight:700;
+          z-index:200; transition:all .2s ease; pointer-events:none; max-width:90vw; text-align:center; box-shadow:0 8px 20px rgba(29,35,80,.25); }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  .toast.error{ background:var(--rose-ink); }
+
+  .pay-list{ margin:6px 0 12px; }
+  .warn{ background:var(--yellow); color:#7a5a00; border-radius:var(--radius-md); padding:10px 12px; font-size:13px; font-weight:600; line-height:1.45; margin-bottom:12px; display:flex; gap:8px; align-items:flex-start; }
+  .warn svg{ width:18px; height:18px; margin-top:1px; }
+  .info{ background:var(--sky); color:#1f4f85; border-radius:var(--radius-md); padding:10px 12px; font-size:13px; font-weight:600; line-height:1.45; margin-bottom:12px; }
+  .more-row{ display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); }
+  .more-row:last-child{ border-bottom:none; }
+  .more-row .txt{ flex:1 1 auto; min-width:0; font-size:14.5px; font-weight:700; }
+  .more-row .txt small{ display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-top:2px; }
+  footer.foot{ text-align:center; font-size:12px; color:var(--ink-faint); padding:4px 20px 0; line-height:1.6; }
+
+
+  /* ---------- Bill checkbox rows ---------- */
+  .bill-item{ gap:6px; }
+  .bill-check{ flex:0 0 auto; width:40px; height:44px; margin-left:-8px; border:none; background:none; padding:0; display:flex; align-items:center; justify-content:center; }
+  .bill-check .box{ width:24px; height:24px; border-radius:8px; border:2px solid #c9c6e0; background:#fff; display:flex; align-items:center; justify-content:center; color:transparent; transition:all .15s ease; }
+  .bill-check .box svg{ width:15px; height:15px; stroke-width:3; }
+  .bill-check:hover .box{ border-color:var(--lavender-strong); }
+  .bill-check:focus-visible{ outline:none; }
+  .bill-check:focus-visible .box{ box-shadow:0 0 0 3px var(--accent-soft); border-color:var(--lavender-strong); }
+  .bill-check.paid .box{ background:var(--mint-ink); border-color:var(--mint-ink); color:#fff; }
+  .bill-check.partial .box{ background:var(--yellow); border-color:#e6c759; color:var(--yellow-ink); }
+  .bill-check:active .box{ transform:scale(.9); }
+  .bill-item.is-paid .li-title{ color:var(--ink-soft); }
+  .bill-item.is-paid .li-amt{ color:var(--ink-soft); }
+  .bill-item .li-main{ gap:10px; }
+  .bill-item .li-sub{ white-space:normal; line-height:1.35; }
+  .bill-item .li-sub .acct-name{ white-space:nowrap; display:inline-block; max-width:100%; overflow:hidden; text-overflow:ellipsis; vertical-align:bottom; }
+
+  /* ---------- Accounts title row ---------- */
+  .title-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin:6px 2px 14px; }
+  .title-row .page-title{ margin:0; }
+
+  /* ---------- Profile ---------- */
+  button.logo{ border:none; padding:0; cursor:pointer; overflow:hidden; }
+  button.logo.has-profile{ background:var(--accent-soft); }
+  .hdr-av{ width:100%; height:100%; object-fit:cover; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:800; color:var(--accent-ink); }
+  .profile-card{ display:flex; align-items:center; gap:12px; }
+  .profile-card .pc-text{ flex:1 1 auto; min-width:0; }
+  .profile-card .pc-text b{ display:block; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .profile-card .pc-text small{ display:block; font-size:12.5px; color:var(--ink-soft); font-weight:600; line-height:1.4; margin-top:2px; }
+  .av-lg{ width:56px; height:56px; flex:0 0 56px; border-radius:50%; object-fit:cover; display:flex; align-items:center; justify-content:center; }
+  .av-lg.initials,.hdr-av.initials{ background:var(--accent-soft); color:var(--accent-ink); font-weight:800; }
+  .av-lg.initials{ font-size:20px; }
+  .avatar-edit{ display:flex; align-items:center; gap:14px; margin-bottom:14px; }
+
+  /* ---------- Multi-profile ---------- */
+  body.no-profile .fab{ display:none; }
+  .profile-card .btn{ white-space:nowrap; flex:0 0 auto; }
+  .profile-card.flat{ box-shadow:none; padding:0; margin:0 0 6px; }
+  .av-sm{ width:36px; height:36px; flex:0 0 36px; border-radius:50%; object-fit:cover; display:flex; align-items:center; justify-content:center; font-size:13px; }
+  .av-sm.initials{ background:var(--accent-soft); color:var(--accent-ink); font-weight:800; }
+  .sub-label{ font-size:12px; font-weight:800; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.05em; margin:14px 0 2px; }
+  .prof-row{ width:100%; display:flex; align-items:center; gap:12px; padding:10px 8px; border:none; background:none; border-radius:var(--radius-md); text-align:left; color:var(--ink); }
+  .prof-row:hover{ background:var(--surface-2); }
+  .prof-row.on{ background:var(--accent-soft); cursor:default; }
+  .prof-row .txt{ flex:1 1 auto; min-width:0; font-size:15px; font-weight:800; }
+  .prof-row .txt small{ display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); }
+  .check-row{ display:flex; gap:10px; align-items:flex-start; background:var(--mint); border-radius:var(--radius-md); padding:10px 12px; margin-bottom:12px; cursor:pointer; }
+  .check-row input{ width:20px; height:20px; margin-top:1px; accent-color:var(--mint-ink); flex:0 0 auto; }
+  .check-row b{ display:block; font-size:14px; }
+  .check-row small{ display:block; font-size:12.5px; color:var(--ink-soft); font-weight:600; line-height:1.4; margin-top:2px; }
+  .bd-title{ display:flex; align-items:center; gap:10px; min-width:0; }
+  .bd-title h3{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  body.no-profile .bottom-nav, body.no-profile .month-nav{ display:none; }
+  body.no-profile{ padding-bottom:24px; }
+  .signin{ max-width:420px; margin:10px auto 0; text-align:center; }
+  .signin h1{ font-size:24px; margin:10px 0 4px; letter-spacing:-.02em; }
+  .signin .card{ text-align:left; }
+  .signin .warn,.signin .info{ text-align:left; }
+  .signin-logo{ width:56px; height:56px; border-radius:18px; background:var(--lavender-strong); color:#fff; display:flex; align-items:center; justify-content:center; margin:0 auto; }
+  .bill-paid-line{ font-size:13px; font-weight:700; color:var(--mint-ink); background:var(--mint); border-radius:var(--radius-sm); padding:9px 12px; margin-bottom:12px; }
+
+  /* ================= v4: portrait column, warm components ================= */
+  html,body{ background:var(--outside); }
+  @media (max-width:480px){ html,body{ background:var(--bg); } body::before{ display:none; } }
+  body::before{ content:""; position:fixed; top:0; bottom:0; left:50%; width:min(100%, var(--app-w)); transform:translateX(-50%);
+                background:var(--bg); z-index:-1; box-shadow:0 0 50px rgba(36,48,46,.07); }
+  .topbar{ max-width:var(--app-w); margin:0 auto; background:rgba(253,248,243,.94); }
+  .topbar-inner,.app{ max-width:var(--app-w); }
+  .app{ padding:4px 16px 8px; }
+  .bottom-nav{ left:50%; right:auto; width:min(100%, var(--app-w)); transform:translateX(-50%); box-shadow:0 -1px 0 var(--line), 0 -6px 18px rgba(36,48,46,.05); }
+  .bottom-nav-inner{ max-width:none; }
+  .fab{ right:calc(50% - min(50%, calc(var(--app-w) / 2)) + 16px); background:var(--accent); box-shadow:0 8px 20px rgba(200,75,56,.32); border-radius:18px; }
+  .sheet{ max-width:var(--app-w); }
+  @media (min-width:700px){ .overlay{ align-items:flex-end; } .sheet{ border-radius:24px 24px 0 0; } .sheet::before{ display:block; } }
+  .toast{ max-width:min(90vw, 440px); }
+  .page-title{ font-size:22px; }
+  .logo{ border-radius:13px; }
+  .month-nav{ box-shadow:none; border:1px solid var(--line); }
+
+  /* hero: the strongest element on Dashboard and Accounts */
+  .hero{ background:var(--accent-soft); color:var(--ink); box-shadow:none; border:1px solid var(--accent-line); border-radius:var(--radius-xl); padding:18px 18px 14px; }
+  .hero::before,.hero::after{ display:none; }
+  .hero-label{ color:var(--accent-ink); opacity:1; }
+  .hero-value{ font-size:40px; line-height:1.1; color:var(--ink); margin:6px 0 4px; }
+  .hero-value.neg{ color:var(--neg); }
+  .hero-note{ color:var(--ink-soft); opacity:1; }
+  .hero-split{ margin-top:12px; }
+  .hero-split > div{ background:#fff; border-radius:var(--radius-md); }
+  .hero-split span{ color:var(--ink-soft); opacity:1; }
+  .hero-split b{ color:var(--ink); }
+  .stat{ border-radius:var(--radius-lg); }
+  .stat .val{ font-size:20px; }
+  .stat .top .ibadge{ background:#fff; }
+
+  /* cards + lists */
+  .card{ border-radius:var(--radius-lg); padding:14px 16px; }
+  details.fold{ border-radius:var(--radius-lg); }
+  .sec-sub{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .sec-sub .pct{ margin-left:auto; font-weight:800; color:var(--pos); }
+  .progress{ height:10px; background:var(--surface-2); }
+  .progress span{ background:var(--pos); }
+  .li-amt.neg{ color:var(--neg) !important; }
+  .chip.paid{ background:var(--mint); color:var(--pos); }
+  .bill-check.paid .box{ background:var(--pos); border-color:var(--pos); }
+  .bill-check .box{ border-color:#d9d2ca; }
+  .filter{ box-shadow:none; border:1px solid var(--line); background:var(--surface); padding:7px 13px; }
+  .filter.active{ background:var(--ink); color:#fff; border-color:var(--ink); }
+  .date-head{ color:var(--ink-soft); }
+
+  /* Transactions grouped by day */
+  .tx-day{ margin-bottom:12px; }
+  .tx-day-head{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; padding:2px 4px 6px; }
+  .tx-day-head .d{ font-size:13px; font-weight:800; color:var(--ink); }
+  .tx-day-head .tot{ display:flex; gap:10px; font-size:12.5px; font-weight:700; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .tx-day .card{ padding:2px 12px; margin:0; }
+  .tx-day .list-item{ padding:9px 0; }
+
+  /* Forms: bottom sheet with a large amount and thumb-reachable actions */
+  .amt-hero{ text-align:left; }
+  .amt-hero .amount-input input{ font-size:30px !important; padding:12px 14px 12px 52px !important; min-height:64px; letter-spacing:-.01em; background:var(--surface-2); }
+  .amt-hero .amount-input span{ font-size:18px; left:16px; color:var(--ink-soft); }
+  .field input:focus,.field select:focus,.field textarea:focus{ box-shadow:0 0 0 3px var(--accent-soft); }
+  .sheet-actions{ position:sticky; bottom:calc(-18px - env(safe-area-inset-bottom)); background:var(--surface); padding:10px 0 calc(4px + env(safe-area-inset-bottom)); margin-top:8px; z-index:2; }
+  .sheet-actions .btn{ min-height:48px; }
+  .btn.secondary{ background:var(--surface-2); }
+  .info{ background:var(--sky); }
+  .signin-logo{ background:var(--accent); }
+  :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .bill-check:focus-visible{ outline:none; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand-wrap">
+      <button class="logo" id="headerAvatar" data-act="create-profile" aria-label="Create profile"><svg class="i" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 7.5h12.5A1.5 1.5 0 0 1 19 9v9a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4 18V8.5"/><path d="M4 8.5A2 2 0 0 1 6 6.5l9-2v3"/><path d="M15.5 13.5h3.5"/></svg></button>
+      <div class="brand"><span id="brandName">Money Tracker</span><small id="viewSubtitle">Dashboard</small></div>
+    </div>
+    <div class="month-nav" role="group" aria-label="Month">
+      <button id="prevMonth" aria-label="Previous month">‹</button>
+      <button class="month-label" id="monthLabel" title="Go to current month">Nov 2026</button>
+      <button id="nextMonth" aria-label="Next month">›</button>
+    </div>
+  </div>
+</header>
+
+<main class="app">
+  <section class="view" id="view-dashboard" data-title="Dashboard"></section>
+  <section class="view" id="view-transactions" data-title="Transactions"></section>
+  <section class="view" id="view-bills" data-title="Bills"></section>
+  <section class="view" id="view-accounts" data-title="Accounts"></section>
+  <section class="view" id="view-more" data-title="More"></section>
+</main>
+
+<nav class="bottom-nav" aria-label="Main">
+  <div class="bottom-nav-inner">
+    <button class="nav-btn" data-view="dashboard"><span class="nav-ic"><svg class="i" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5"/><path d="M6 10v9h12v-9"/><path d="M10 19v-5h4v5"/></svg></span>Home</button>
+    <button class="nav-btn" data-view="transactions"><span class="nav-ic"><svg class="i" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M9 6.5h11M9 12h11M9 17.5h11"/><circle cx="4.8" cy="6.5" r=".9"/><circle cx="4.8" cy="12" r=".9"/><circle cx="4.8" cy="17.5" r=".9"/></svg></span>Transactions</button>
+    <button class="nav-btn" data-view="bills"><span class="nav-ic"><svg class="i" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 3.5h12v17l-2-1.3-2 1.3-2-1.3-2 1.3-2-1.3-2 1.3z"/><path d="M9 8h6M9 11.5h6M9 15h3.5"/></svg></span>Bills</button>
+    <button class="nav-btn" data-view="accounts"><span class="nav-ic"><svg class="i" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/></svg></span>Accounts</button>
+    <button class="nav-btn" data-view="more"><span class="nav-ic"><svg class="i" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.8"/><rect x="13" y="4" width="7" height="7" rx="1.8"/><rect x="4" y="13" width="7" height="7" rx="1.8"/><rect x="13" y="13" width="7" height="7" rx="1.8"/></svg></span>More</button>
+  </div>
+</nav>
+<button class="fab" id="navAdd" aria-label="Add transaction"><svg class="i" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+
+<div class="overlay" id="overlay"><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* =====================================================================
+   MONEY TRACKER — public frontend prototype
+   Modules (all in this file, each replaceable later):
+     Util      – formatting, dates, ids, escaping
+     Store     – persistence (localStorage now; swap for a Supabase
+                 repository later — the rest of the app only calls Store)
+     Ledger    – pure calculation logic (balances, bill status, summaries)
+     Receipts  – receipt images in IndexedDB (later: private storage bucket)
+     Xlsx      – .xlsx writer used by Export
+     UI        – views, sheets/forms, navigation
+   DATA MODEL (single source of truth = transactions):
+     account     { id, name, type, openingBalance, includeInAvailable, archived, createdAt }
+     transaction { id, type: income|expense|transfer|deposit|withdrawal, amount (>0),
+                   date YYYY-MM-DD, accountId, toAccountId (transfer only),
+                   description, category, billId (expense only, optional),
+                   receiptId, note, createdAt, updatedAt }
+     bill        { id, name, amount (planned), dueDate, category, accountId,
+                   receiptId, note, createdAt }   ← a planned expense
+   A bill never changes a balance. Paying a bill = an "expense" transaction
+   with billId. Bill status (pending/partial/paid) is derived from those
+   transactions, so a payment is counted exactly once, and editing or
+   deleting it updates both the balance and the bill status.
+   ===================================================================== */
+(function(){
+  "use strict";
+
+  /* ============================== Util ============================== */
+  var Util = {
+    uid: function(prefix){
+      var r = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+        : Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+      return (prefix || "") + r;
+    },
+    pad: function(n){ return (n < 10 ? "0" : "") + n; },
+    todayISO: function(){ var d = new Date(); return d.getFullYear() + "-" + Util.pad(d.getMonth() + 1) + "-" + Util.pad(d.getDate()); },
+    monthOf: function(iso){ return String(iso || "").slice(0, 7); },
+    currentMonth: function(){ return Util.todayISO().slice(0, 7); },
+    addMonths: function(key, n){
+      var y = +key.slice(0, 4), m = +key.slice(5, 7) - 1 + n;
+      y += Math.floor(m / 12); m = ((m % 12) + 12) % 12;
+      return y + "-" + Util.pad(m + 1);
+    },
+    endOfMonth: function(key){
+      var y = +key.slice(0, 4), m = +key.slice(5, 7);
+      return key + "-" + Util.pad(new Date(y, m, 0).getDate());
+    },
+    MONTHS: ["January","February","March","April","May","June","July","August","September","October","November","December"],
+    monthLabel: function(key, short){
+      var n = Util.MONTHS[+key.slice(5, 7) - 1];
+      return (short ? n.slice(0, 3) : n) + " " + key.slice(0, 4);
+    },
+    isISODate: function(s){
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(s || "")) return false;
+      var y = +s.slice(0, 4), m = +s.slice(5, 7), d = +s.slice(8, 10);
+      var dt = new Date(y, m - 1, d); // local date, no timezone shift
+      return y >= 1900 && y <= 2200 && dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
+    },
+    fmtDate: function(iso){
+      if(!Util.isISODate(iso)) return "";
+      var d = new Date(iso + "T00:00:00");
+      return d.getDate() + " " + Util.MONTHS[d.getMonth()].slice(0, 3) + " " + d.getFullYear();
+    },
+    r2: function(n){ return Math.round((+n || 0) * 100) / 100; },
+    money: function(n, signed){
+      n = Util.r2(n);
+      var s = Math.abs(n).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      var sign = n < 0 ? "-" : (signed && n > 0 ? "+" : "");
+      return sign + "RM" + s;
+    },
+    esc: function(s){
+      return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    },
+    // amount parser: positive, max 2 decimals, max 1 billion
+    parseAmount: function(v){
+      var s = String(v == null ? "" : v).trim().replace(/,/g, "");
+      if(!/^\d+(\.\d{1,2})?$/.test(s)) return null;
+      var n = Number(s);
+      return (n > 0 && n < 1e9) ? Util.r2(n) : null;
+    },
+    safeAvatar: function(v){ return (typeof v === "string" && v.length < 200000 && /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+\/=]+$/.test(v)) ? v : null; },
+    parseSignedAmount: function(v){
+      var s = String(v == null ? "" : v).trim().replace(/,/g, "");
+      if(s === "") return 0;
+      if(!/^-?\d+(\.\d{1,2})?$/.test(s)) return null;
+      var n = Number(s);
+      return Math.abs(n) < 1e9 ? Util.r2(n) : null;
+    }
+  };
+
+  var ACCOUNT_TYPES = [
+    { v: "bank", t: "Bank account", icon: "🏦", available: true },
+    { v: "ewallet", t: "E-wallet", icon: "📱", available: true },
+    { v: "cash", t: "Cash", icon: "💵", available: true },
+    { v: "savings", t: "Savings", icon: "🐷", available: false },
+    { v: "investment", t: "Investment", icon: "📈", available: false },
+    { v: "credit", t: "Credit card", icon: "💳", available: true },
+    { v: "other", t: "Other", icon: "👛", available: true }
+  ];
+  var EXPENSE_CATEGORIES = ["Housing", "Utilities", "Food & Groceries", "Transport", "Phone & Internet", "Insurance", "Loan & Debt", "Shopping", "Health", "Education", "Family", "Entertainment", "Subscriptions", "Others"];
+  var INCOME_CATEGORIES = ["Salary", "Business", "Freelance", "Bonus", "Gift", "Refund", "Others"];
+  var TX_TYPES = {
+    income:     { t: "Income",     icon: "↓", sign: +1, cls: "ic-income" },
+    expense:    { t: "Expense",    icon: "↑", sign: -1, cls: "ic-expense" },
+    transfer:   { t: "Transfer",   icon: "⇄", sign: 0,  cls: "ic-transfer" },
+    deposit:    { t: "Deposit",    icon: "+", sign: +1, cls: "ic-deposit" },
+    withdrawal: { t: "Withdrawal", icon: "−", sign: -1, cls: "ic-withdrawal" }
+  };
+  function accountType(v){ return ACCOUNT_TYPES.find(function(a){ return a.v === v; }) || ACCOUNT_TYPES[ACCOUNT_TYPES.length - 1]; }
+
+  /* ============================== Store ==============================
+     All reads/writes go through here. To move to Supabase later, keep
+     these method names and replace the bodies with API calls (async).  */
+  var Store = (function(){
+    var LEGACY_KEY = "moneyTracker_public_v1"; // pre-profile data: read for migration, never deleted
+    var KEY = null;                            // active profile's key: LEGACY_KEY + "__p_" + profileId
+    var OWNER = null;                          // active profile id; stamped on every record as ownerId
+    function keyFor(id){ return LEGACY_KEY + "__p_" + id; }
+    var VERSION = 1;
+    var data = null;
+    var listeners = [];
+
+    function blank(){ return { version: VERSION, accounts: [], transactions: [], bills: [], settings: {} }; }
+
+    // owner: profile id the records must belong to. Records tagged with a
+    // DIFFERENT owner are dropped (never mixed in); untagged records are stamped.
+    function sanitize(d, owner){
+      var out = blank();
+      if(!d || typeof d !== "object") return out;
+      function foreign(x){ return owner && typeof x.ownerId === "string" && x.ownerId && x.ownerId !== owner; }
+      function ownerOf(x){ return owner || (typeof x.ownerId === "string" ? x.ownerId : null); }
+      out.ownerId = owner || null;
+      (Array.isArray(d.accounts) ? d.accounts : []).forEach(function(a){
+        if(!a || typeof a.id !== "string" || typeof a.name !== "string" || foreign(a)) return;
+        out.accounts.push({ ownerId: ownerOf(a),
+          id: a.id, name: a.name.slice(0, 60), type: accountType(a.type).v,
+          openingBalance: Util.r2(a.openingBalance), includeInAvailable: a.includeInAvailable !== false,
+          archived: !!a.archived, createdAt: a.createdAt || new Date().toISOString()
+        });
+      });
+      var ids = {}; out.accounts.forEach(function(a){ ids[a.id] = true; });
+      (Array.isArray(d.bills) ? d.bills : []).forEach(function(b){
+        if(!b || typeof b.id !== "string" || !Util.isISODate(b.dueDate) || foreign(b)) return;
+        out.bills.push({ ownerId: ownerOf(b),
+          id: b.id, name: String(b.name || "").slice(0, 80), amount: Util.r2(b.amount), dueDate: b.dueDate,
+          category: String(b.category || "Others"), accountId: ids[b.accountId] ? b.accountId : null,
+          receiptId: typeof b.receiptId === "string" ? b.receiptId : null, note: String(b.note || ""), createdAt: b.createdAt || new Date().toISOString()
+        });
+      });
+      var billIds = {}; out.bills.forEach(function(b){ billIds[b.id] = true; });
+      (Array.isArray(d.transactions) ? d.transactions : []).forEach(function(t){
+        if(!t || typeof t.id !== "string" || !TX_TYPES[t.type] || !Util.isISODate(t.date) || !ids[t.accountId] || foreign(t)) return;
+        if(t.type === "transfer" && (!ids[t.toAccountId] || t.toAccountId === t.accountId)) return;
+        var amt = Util.r2(t.amount); if(!(amt > 0)) return;
+        out.transactions.push({ ownerId: ownerOf(t),
+          id: t.id, type: t.type, amount: amt, date: t.date, accountId: t.accountId,
+          toAccountId: t.type === "transfer" ? t.toAccountId : null,
+          description: String(t.description || "").slice(0, 80), category: String(t.category || ""),
+          billId: (t.type === "expense" && billIds[t.billId]) ? t.billId : null,
+          receiptId: typeof t.receiptId === "string" ? t.receiptId : null, note: String(t.note || ""),
+          createdAt: t.createdAt || new Date().toISOString(), updatedAt: t.updatedAt || null
+        });
+      });
+      out.settings = (d.settings && typeof d.settings === "object") ? d.settings : {};
+      return out;
+    }
+
+    function load(){
+      var raw = null;
+      try{ raw = localStorage.getItem(KEY); }catch(e){ data = blank(); return { ok: false, error: "Browser storage is not available. Changes won't be saved." }; }
+      if(!raw){ data = blank(); return { ok: true }; }
+      try{ data = sanitize(JSON.parse(raw), OWNER); return { ok: true }; }
+      catch(e){
+        try{ localStorage.setItem(KEY + "_unreadable_" + Date.now(), raw); }catch(_){}
+        data = blank();
+        return { ok: false, error: "Saved data could not be read. A copy was kept and the app started empty." };
+      }
+    }
+    function persist(){
+      if(!KEY || !OWNER){ UI.toast("Sign in first.", true); throw new Error("Not signed in"); }
+      data.ownerId = OWNER;
+      try{ localStorage.setItem(KEY, JSON.stringify(data)); }
+      catch(e){ UI.toast("Could not save — browser storage is full or blocked.", true); throw e; }
+      listeners.forEach(function(fn){ fn(); });
+    }
+    function find(list, id){ return data[list].find(function(x){ return x.id === id; }) || null; }
+    function upsert(list, rec){
+      rec.ownerId = OWNER;   // every record carries its owner
+      var i = data[list].findIndex(function(x){ return x.id === rec.id; });
+      if(i > -1) data[list][i] = rec; else data[list].push(rec);
+      persist();
+      return rec;
+    }
+    function removeWhere(list, pred){
+      var removed = data[list].filter(pred);
+      data[list] = data[list].filter(function(x){ return !pred(x); });
+      return removed;
+    }
+
+    return {
+      LEGACY_KEY: LEGACY_KEY, keyFor: keyFor, activeKey: function(){ return KEY; },
+      // point the store at one profile's data (null = no profile)
+      useProfile: function(id){ KEY = id ? keyFor(id) : null; OWNER = id || null; if(!KEY){ data = blank(); return { ok: true }; } return load(); },
+      writeFor: function(id, d){ localStorage.setItem(keyFor(id), JSON.stringify(sanitize(d, id))); },
+      owner: function(){ return OWNER; },
+      dropProfile: function(id){ try{ localStorage.removeItem(keyFor(id)); }catch(e){} if(KEY === keyFor(id)) data = blank(); },
+      // data saved before profiles existed (read-only)
+      legacy: function(){
+        try{
+          var raw = localStorage.getItem(LEGACY_KEY); if(!raw) return null;
+          var parsed = JSON.parse(raw), d = sanitize(parsed);
+          if(!d.accounts.length && !d.transactions.length && !d.bills.length) return null;
+          var prof = parsed.settings && parsed.settings.profile;
+          d.settings = Object.assign({}, d.settings); delete d.settings.profile;
+          return { data: d,
+            profile: (prof && typeof prof.name === "string" && prof.name.trim()) ? { name: prof.name.trim().slice(0, 40), avatar: Util.safeAvatar(prof.avatar) } : null,
+            counts: d.accounts.length + " account(s), " + d.transactions.length + " transaction(s), " + d.bills.length + " bill(s)" };
+        }catch(e){ return null; }
+      },
+      load: load, onChange: function(fn){ listeners.push(fn); },
+      snapshot: function(){ return JSON.parse(JSON.stringify(data)); },
+      replaceAll: function(d){ data = sanitize(d, OWNER); persist(); },
+      clear: function(){ data = blank(); persist(); },
+      settings: function(){ return data.settings; },
+      setSetting: function(k, v){ data.settings[k] = v; persist(); },
+
+      accounts: {
+        list: function(includeArchived){ return data.accounts.filter(function(a){ return includeArchived || !a.archived; }); },
+        get: function(id){ return find("accounts", id); },
+        save: function(a){ return upsert("accounts", a); },
+        usage: function(id){
+          return {
+            tx: data.transactions.filter(function(t){ return t.accountId === id || t.toAccountId === id; }).length,
+            bills: data.bills.filter(function(b){ return b.accountId === id; }).length
+          };
+        },
+        remove: function(id){
+          var u = this.usage(id);
+          if(u.tx > 0) throw new Error("This account has " + u.tx + " transaction(s). Archive it instead, or delete those transactions first.");
+          data.bills.forEach(function(b){ if(b.accountId === id) b.accountId = null; });
+          removeWhere("accounts", function(a){ return a.id === id; });
+          persist();
+        }
+      },
+
+      transactions: {
+        list: function(){ return data.transactions.slice(); },
+        get: function(id){ return find("transactions", id); },
+        save: function(t){ t.updatedAt = new Date().toISOString(); return upsert("transactions", t); },
+        remove: function(id){ var r = removeWhere("transactions", function(t){ return t.id === id; }); persist(); return r[0] || null; },
+        forBill: function(billId){ return data.transactions.filter(function(t){ return t.billId === billId; }); }
+      },
+
+      bills: {
+        list: function(){ return data.bills.slice(); },
+        get: function(id){ return find("bills", id); },
+        save: function(b){ return upsert("bills", b); },
+        // keepPayments: payments stay as normal expenses (money really left the account)
+        remove: function(id, keepPayments){
+          var removedTx = [];
+          if(keepPayments){
+            data.transactions.forEach(function(t){ if(t.billId === id) t.billId = null; });
+          } else {
+            removedTx = removeWhere("transactions", function(t){ return t.billId === id; });
+          }
+          var b = removeWhere("bills", function(x){ return x.id === id; })[0] || null;
+          persist();
+          return { bill: b, removedTx: removedTx };
+        }
+      }
+    };
+  })();
+
+  /* ============================== Profiles ==============================
+     Local profiles ONLY (no login, no passwords, no security).
+     Registry key  : moneyTracker_public_profiles
+                     { version, activeId, legacyMigratedTo, profiles:[{id,name,avatar,createdAt,updatedAt}] }
+     Data per profile : localStorage "moneyTracker_public_v1__p_<id>"   (Store)
+     Receipts per profile : IndexedDB "moneyTracker_public_receipts__p_<id>" (Receipts)
+     The original "moneyTracker_public_v1" data is never deleted; it can be
+     copied into the first profile.                                         */
+  var Profiles = (function(){
+    var KEY = "moneyTracker_public_profiles";
+    var reg = null;
+    function blank(){ return { version: 1, activeId: null, legacyMigratedTo: null, profiles: [] }; }
+    function clean(p){
+      return { id: p.id, name: String(p.name).trim().slice(0, 40), avatar: Util.safeAvatar(p.avatar),
+               createdAt: p.createdAt || new Date().toISOString(), updatedAt: p.updatedAt || null };
+    }
+    function save(){
+      try{ localStorage.setItem(KEY, JSON.stringify(reg)); }
+      catch(e){ UI.toast("Could not save profile — browser storage is full or blocked.", true); throw e; }
+    }
+    function find(id){ return reg.profiles.find(function(p){ return p.id === id; }) || null; }
+    return {
+      KEY: KEY,
+      load: function(){
+        try{ var raw = localStorage.getItem(KEY); reg = raw ? JSON.parse(raw) : blank(); }catch(e){ reg = blank(); }
+        if(!reg || !Array.isArray(reg.profiles)) reg = blank();
+        reg.profiles = reg.profiles.filter(function(p){
+          return p && typeof p.id === "string" && /^[A-Za-z0-9_-]{4,64}$/.test(p.id) && typeof p.name === "string" && p.name.trim();
+        }).map(clean);
+        if(!find(reg.activeId)) reg.activeId = null;   // never auto-sign-in to someone else
+      },
+      list: function(){ return reg.profiles.slice(); },
+      get: find,
+      active: function(){ return find(reg.activeId); },
+      nameTaken: function(name, exceptId){
+        var n = name.trim().toLowerCase();
+        return reg.profiles.some(function(p){ return p.id !== exceptId && p.name.toLowerCase() === n; });
+      },
+      create: function(name, avatar){
+        var p = clean({ id: "p_" + Util.uid("").replace(/[^A-Za-z0-9]/g, "").slice(0, 24), name: name, avatar: avatar });
+        reg.profiles.push(p); save(); return p;
+      },
+      update: function(id, fields){
+        var p = find(id); if(!p) return null;
+        if(fields.name !== undefined) p.name = String(fields.name).trim().slice(0, 40);
+        if(fields.avatar !== undefined) p.avatar = Util.safeAvatar(fields.avatar);
+        p.updatedAt = new Date().toISOString(); save(); return p;
+      },
+      setActive: function(id){ if(find(id)){ reg.activeId = id; save(); } },
+      signOut: function(){ reg.activeId = null; save(); },
+      findByName: function(name){ var n = String(name).trim().toLowerCase(); return reg.profiles.find(function(p){ return p.name.toLowerCase() === n; }) || null; },
+      remove: function(id){
+        reg.profiles = reg.profiles.filter(function(p){ return p.id !== id; });
+        if(reg.activeId === id) reg.activeId = null;
+        save();
+      },
+      legacyMigratedTo: function(){ return reg.legacyMigratedTo || null; },
+      markLegacyMigrated: function(id){ reg.legacyMigratedTo = id; save(); }
+    };
+  })();
+
+  /* ============================== Ledger ==============================
+     Pure functions. Balances come ONLY from opening balance + transactions. */
+  var Ledger = {
+    // effect of one transaction on account balances
+    effects: function(t){
+      var a = Util.r2(t.amount);
+      switch(t.type){
+        case "income": case "deposit": return [{ accountId: t.accountId, delta: a }];
+        case "expense": case "withdrawal": return [{ accountId: t.accountId, delta: -a }];
+        case "transfer": return [{ accountId: t.accountId, delta: -a }, { accountId: t.toAccountId, delta: a }];
+      }
+      return [];
+    },
+    balance: function(accountId, upToDate){
+      var acc = Store.accounts.get(accountId);
+      if(!acc) return 0;
+      var bal = acc.openingBalance;
+      Store.transactions.list().forEach(function(t){
+        if(upToDate && t.date > upToDate) return;
+        Ledger.effects(t).forEach(function(e){ if(e.accountId === accountId) bal += e.delta; });
+      });
+      return Util.r2(bal);
+    },
+    billStatus: function(bill, today){
+      today = today || Util.todayISO();
+      var pays = Store.transactions.forBill(bill.id);
+      var paid = Util.r2(pays.reduce(function(s, t){ return s + t.amount; }, 0));
+      var remaining = Util.r2(Math.max(bill.amount - paid, 0));
+      var over = Util.r2(Math.max(paid - bill.amount, 0));
+      var status = paid <= 0 ? "pending" : (remaining > 0 ? "partial" : "paid");
+      return { paid: paid, remaining: remaining, over: over, status: status, payments: pays,
+               overdue: remaining > 0 && bill.dueDate < today };
+    },
+    monthSummary: function(month){
+      var end = Util.endOfMonth(month);
+      var txs = Store.transactions.list().filter(function(t){ return Util.monthOf(t.date) === month; });
+      var accounts = Store.accounts.list(true);
+      var accById = {}; accounts.forEach(function(a){ accById[a.id] = a; });
+      var s = { month: month, income: 0, expenses: 0, billPayments: 0, otherSpending: 0, deposits: 0, withdrawals: 0,
+                transfers: 0, transferCount: 0, toSavings: 0, fromSavings: 0, txCount: txs.length };
+      txs.forEach(function(t){
+        if(t.type === "income") s.income += t.amount;
+        else if(t.type === "expense"){ s.expenses += t.amount; if(t.billId) s.billPayments += t.amount; else s.otherSpending += t.amount; }
+        else if(t.type === "deposit") s.deposits += t.amount;
+        else if(t.type === "withdrawal") s.withdrawals += t.amount;
+        else if(t.type === "transfer"){
+          s.transfers += t.amount; s.transferCount++;
+          var to = accById[t.toAccountId], from = accById[t.accountId];
+          var toSave = to && !to.includeInAvailable, fromSave = from && !from.includeInAvailable;
+          if(toSave && !fromSave) s.toSavings += t.amount;
+          if(fromSave && !toSave) s.fromSavings += t.amount;
+        }
+      });
+      var bills = Store.bills.list().filter(function(b){ return Util.monthOf(b.dueDate) === month; });
+      s.planned = 0; s.plannedPaid = 0; s.pending = 0; s.overdueCount = 0; s.billCount = bills.length; s.billsPaidCount = 0;
+      bills.forEach(function(b){
+        var st = Ledger.billStatus(b);
+        s.planned += b.amount; s.plannedPaid += Math.min(st.paid, b.amount); s.pending += st.remaining;
+        if(st.overdue) s.overdueCount++;
+        if(st.status === "paid") s.billsPaidCount++;
+      });
+      s.balances = accounts.map(function(a){ return { account: a, balance: Ledger.balance(a.id, end) }; })
+        .filter(function(x){ return !x.account.archived || Math.abs(x.balance) >= 0.005; });
+      s.totalBalance = s.balances.reduce(function(t, x){ return t + x.balance; }, 0);
+      s.availableBalance = s.balances.reduce(function(t, x){ return t + (x.account.includeInAvailable ? x.balance : 0); }, 0);
+      s.remainingAvailable = s.availableBalance - s.pending;
+      s.netFlow = s.income - s.expenses;
+      ["income","expenses","billPayments","otherSpending","deposits","withdrawals","transfers","toSavings","fromSavings","planned","plannedPaid","pending","totalBalance","availableBalance","remainingAvailable","netFlow"]
+        .forEach(function(k){ s[k] = Util.r2(s[k]); });
+      return s;
+    }
+  };
+
+  /* ============================== Receipts ============================== */
+  var Receipts = (function(){
+    // One IndexedDB database per profile: BASE + "__p_" + profileId.
+    // BASE itself holds receipts saved before profiles (copied, never deleted).
+    var BASE = "moneyTracker_public_receipts", STORE = "receipts", p = null, ns = null, conn = null;
+    function openDb(name){
+      return new Promise(function(res, rej){
+        if(!window.indexedDB){ rej(new Error("Receipt storage isn't supported in this browser.")); return; }
+        var r = indexedDB.open(name, 1);
+        r.onupgradeneeded = function(){ if(!r.result.objectStoreNames.contains(STORE)) r.result.createObjectStore(STORE, { keyPath: "id" }); };
+        r.onsuccess = function(){ res(r.result); };
+        r.onerror = function(){ rej(r.error || new Error("Could not open receipt storage.")); };
+      });
+    }
+    function open(){
+      if(p) return p;
+      if(!ns) return Promise.reject(new Error("Create or choose a profile first."));
+      var mine = ns;
+      p = openDb(BASE + "__p_" + mine).then(function(db){
+        if(ns !== mine){ db.close(); throw new Error("Profile changed."); }
+        conn = db;
+        db.onversionchange = function(){ db.close(); if(conn === db){ conn = null; p = null; } };
+        return db;
+      });
+      p.catch(function(){ p = null; });
+      return p;
+    }
+    function tx(mode, fn){
+      return open().then(function(db){
+        return new Promise(function(res, rej){
+          var t = db.transaction(STORE, mode), out;
+          fn(t.objectStore(STORE), function(v){ out = v; });
+          t.oncomplete = function(){ res(out); };
+          t.onerror = t.onabort = function(){ rej(t.error || new Error("Receipt storage error.")); };
+        });
+      });
+    }
+    function readBuf(blob){
+      return new Promise(function(res, rej){
+        var fr = new FileReader();
+        fr.onload = function(){ res(fr.result); };
+        fr.onerror = function(){ rej(fr.error); };
+        fr.readAsArrayBuffer(blob);
+      });
+    }
+    // Resize big phone photos (max 1600px JPEG); keep original if it can't be decoded
+    function compress(file){
+      return new Promise(function(res){
+        var url = URL.createObjectURL(file), img = new Image();
+        img.onload = function(){
+          try{
+            var s = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+            var c = document.createElement("canvas");
+            c.width = Math.max(1, Math.round(img.naturalWidth * s)); c.height = Math.max(1, Math.round(img.naturalHeight * s));
+            var ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
+            ctx.drawImage(img, 0, 0, c.width, c.height);
+            c.toBlob(function(b){ URL.revokeObjectURL(url); res(b && b.size < file.size ? b : file); }, "image/jpeg", 0.82);
+          }catch(e){ URL.revokeObjectURL(url); res(file); }
+        };
+        img.onerror = function(){ URL.revokeObjectURL(url); res(file); };
+        img.src = url;
+      });
+    }
+    return {
+      useNamespace: function(id){ if(conn){ conn.close(); conn = null; } p = null; ns = id || null; },
+      deleteNamespace: function(id){
+        if(id === ns && conn){ conn.close(); conn = null; p = null; }
+        return new Promise(function(res){
+          if(!window.indexedDB) return res();
+          var r = indexedDB.deleteDatabase(BASE + "__p_" + id);
+          r.onsuccess = r.onerror = r.onblocked = function(){ res(); };
+        });
+      },
+      // copy pre-profile receipts into a profile (the source is left as it is)
+      copyLegacyInto: function(id){
+        return openDb(BASE).then(function(src){
+          return new Promise(function(res, rej){
+            var q = src.transaction(STORE).objectStore(STORE).getAll();
+            q.onsuccess = function(){ src.close(); res(q.result || []); };
+            q.onerror = function(){ src.close(); rej(q.error); };
+          });
+        }).then(function(recs){
+          if(!recs.length) return 0;
+          return openDb(BASE + "__p_" + id).then(function(dst){
+            return new Promise(function(res, rej){
+              var t = dst.transaction(STORE, "readwrite");
+              recs.forEach(function(r){ r.ownerId = id; t.objectStore(STORE).put(r); });
+              t.oncomplete = function(){ dst.close(); res(recs.length); };
+              t.onerror = t.onabort = function(){ dst.close(); rej(t.error); };
+            });
+          });
+        });
+      },
+      validate: function(file){
+        if(!file) return "No file selected.";
+        if(file.type && !/^image\//.test(file.type)) return "Please choose an image file (JPG, PNG, HEIC…).";
+        if(file.size > 25 * 1024 * 1024) return "That image is larger than 25 MB.";
+        return null;
+      },
+      save: function(file, id){
+        id = id || Util.uid("rc_");
+        return compress(file).then(function(blob){
+          return readBuf(blob).then(function(buf){
+            return tx("readwrite", function(s){ s.put({ id: id, ownerId: ns, type: blob.type || file.type || "image/jpeg", data: buf, size: buf.byteLength, savedAt: new Date().toISOString() }); });
+          });
+        }).then(function(){ return id; });
+      },
+      getUrl: function(id){
+        return tx("readonly", function(s, done){ var r = s.get(id); r.onsuccess = function(){ done(r.result || null); }; })
+          .then(function(rec){ return (rec && (!rec.ownerId || rec.ownerId === ns)) ? URL.createObjectURL(new Blob([rec.data], { type: rec.type })) : null; });
+      },
+      remove: function(id){ if(!id) return Promise.resolve(); return tx("readwrite", function(s){ s.delete(id); }); },
+      clear: function(){ return tx("readwrite", function(s){ s.clear(); }); },
+      ids: function(){ return tx("readonly", function(s, done){ var r = s.getAllKeys(); r.onsuccess = function(){ done(r.result || []); }; }); }
+    };
+  })();
+
+  /* ============================== Xlsx ============================== */
+  var Xlsx = (function(){
+    var CRC_TABLE = null;
+    function crc32(bytes){
+      if(!CRC_TABLE){
+        CRC_TABLE = new Uint32Array(256);
+        for(var n = 0; n < 256; n++){
+          var c = n;
+          for(var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+          CRC_TABLE[n] = c >>> 0;
+        }
+      }
+      var crc = 0xFFFFFFFF;
+      for(var i = 0; i < bytes.length; i++) crc = CRC_TABLE[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+      return (crc ^ 0xFFFFFFFF) >>> 0;
+    }
+    function utf8(str){ return new TextEncoder().encode(str); }
+    function esc(s){
+      return String(s)
+        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+    function colName(i){
+      var s = "";
+      i++;
+      while(i > 0){ var m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); }
+      return s;
+    }
+    // styles: 0 normal · 1 header · 2 money · 3 bold money · 4 bold text · 5 wrapped text
+    var STYLES = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+      '<numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00"/></numFmts>' +
+      '<fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font>' +
+      '<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts>' +
+      '<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>' +
+      '<fill><patternFill patternType="solid"><fgColor rgb="FF171E2E"/><bgColor indexed="64"/></patternFill></fill></fills>' +
+      '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
+      '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+      '<cellXfs count="6">' +
+      '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+      '<xf numFmtId="0" fontId="2" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>' +
+      '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
+      '<xf numFmtId="164" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/>' +
+      '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
+      '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf>' +
+      '</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+
+    // cell: null | string | number | { v: value, s: styleIndex }
+    function sheetXml(sheet){
+      var rows = sheet.rows.map(function(r, ri){
+        var cells = r.map(function(cell, ci){
+          if(cell === null || cell === undefined || cell === "") return "";
+          var v = cell, s = 0;
+          if(typeof cell === "object"){ v = cell.v; s = cell.s || 0; }
+          if(v === null || v === undefined || v === "") return s ? '<c r="' + colName(ci) + (ri + 1) + '" s="' + s + '"/>' : "";
+          var ref = colName(ci) + (ri + 1);
+          if(typeof v === "number" && isFinite(v)){
+            return '<c r="' + ref + '"' + (s ? ' s="' + s + '"' : "") + '><v>' + v + '</v></c>';
+          }
+          return '<c r="' + ref + '" t="inlineStr"' + (s ? ' s="' + s + '"' : "") + '><is><t xml:space="preserve">' + esc(v) + '</t></is></c>';
+        }).join("");
+        return '<row r="' + (ri + 1) + '">' + cells + '</row>';
+      }).join("");
+      var cols = (sheet.widths || []).map(function(w, i){
+        return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>';
+      }).join("");
+      var views = sheet.freezeHeader
+        ? '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
+        : '<sheetViews><sheetView workbookViewId="0"/></sheetViews>';
+      return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+        views + '<sheetFormatPr defaultRowHeight="15"/>' + (cols ? '<cols>' + cols + '</cols>' : "") +
+        '<sheetData>' + rows + '</sheetData></worksheet>';
+    }
+
+    function zip(files){
+      var now = new Date();
+      var dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | Math.floor(now.getSeconds() / 2);
+      var dosDate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+      var parts = [], central = [], offset = 0;
+      files.forEach(function(f){
+        var name = utf8(f.name), data = f.data, crc = crc32(data);
+        var h = new DataView(new ArrayBuffer(30));
+        h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true);
+        h.setUint16(8, 0, true); h.setUint16(10, dosTime, true); h.setUint16(12, dosDate, true);
+        h.setUint32(14, crc, true); h.setUint32(18, data.length, true); h.setUint32(22, data.length, true);
+        h.setUint16(26, name.length, true); h.setUint16(28, 0, true);
+        parts.push(new Uint8Array(h.buffer), name, data);
+        var c = new DataView(new ArrayBuffer(46));
+        c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true);
+        c.setUint16(8, 0x0800, true); c.setUint16(10, 0, true); c.setUint16(12, dosTime, true);
+        c.setUint16(14, dosDate, true); c.setUint32(16, crc, true); c.setUint32(20, data.length, true);
+        c.setUint32(24, data.length, true); c.setUint16(28, name.length, true); c.setUint16(30, 0, true);
+        c.setUint16(32, 0, true); c.setUint16(34, 0, true); c.setUint16(36, 0, true);
+        c.setUint32(38, 0, true); c.setUint32(42, offset, true);
+        central.push(new Uint8Array(c.buffer), name);
+        offset += 30 + name.length + data.length;
+      });
+      var cdSize = central.reduce(function(s, p){ return s + p.length; }, 0);
+      var e = new DataView(new ArrayBuffer(22));
+      e.setUint32(0, 0x06054b50, true); e.setUint16(4, 0, true); e.setUint16(6, 0, true);
+      e.setUint16(8, files.length, true); e.setUint16(10, files.length, true);
+      e.setUint32(12, cdSize, true); e.setUint32(16, offset, true); e.setUint16(20, 0, true);
+      return new Blob(parts.concat(central, [new Uint8Array(e.buffer)]), {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      });
+    }
+
+    function build(sheets){
+      var files = [];
+      var ct = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+        '<Default Extension="xml" ContentType="application/xml"/>' +
+        '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+        '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+        sheets.map(function(s, i){
+          return '<Override PartName="/xl/worksheets/sheet' + (i + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
+        }).join("") + '</Types>';
+      files.push({ name: "[Content_Types].xml", data: utf8(ct) });
+      files.push({ name: "_rels/.rels", data: utf8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+        '</Relationships>') });
+      files.push({ name: "xl/workbook.xml", data: utf8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+        '<sheets>' + sheets.map(function(s, i){
+          return '<sheet name="' + esc(s.name) + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>';
+        }).join("") + '</sheets></workbook>') });
+      files.push({ name: "xl/_rels/workbook.xml.rels", data: utf8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+        sheets.map(function(s, i){
+          return '<Relationship Id="rId' + (i + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + (i + 1) + '.xml"/>';
+        }).join("") +
+        '<Relationship Id="rId' + (sheets.length + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+        '</Relationships>') });
+      files.push({ name: "xl/styles.xml", data: utf8(STYLES) });
+      sheets.forEach(function(s, i){ files.push({ name: "xl/worksheets/sheet" + (i + 1) + ".xml", data: utf8(sheetXml(s)) }); });
+      return zip(files);
+    }
+
+    return { build: build };
+  })();
+
+
+
+  /* ============================== Icons ==============================
+     Small inline-SVG icon set (works offline). Each category / type maps
+     to one glyph + one pastel tone so icons stay consistent everywhere. */
+  var Icons = (function(){
+    var P = {
+      home:      '<path d="M4 11.5 12 5l8 6.5"/><path d="M6 10v9h12v-9"/><path d="M10 19v-5h4v5"/>',
+      bolt:      '<path d="M13 3 5 14h6l-1 7 8-11h-6l1-7z"/>',
+      cart:      '<path d="M3 4h2l2.2 10.2a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.5-1.1L20.5 8H6.2"/><circle cx="9.5" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/>',
+      car:       '<path d="M5 16V12l1.8-4.2A2 2 0 0 1 8.6 6.5h6.8a2 2 0 0 1 1.8 1.3L19 12v4"/><path d="M4 16h16v2.5H4z"/><circle cx="7.5" cy="13" r=".9"/><circle cx="16.5" cy="13" r=".9"/>',
+      wifi:      '<path d="M4 9.5a12 12 0 0 1 16 0"/><path d="M7 12.8a7.5 7.5 0 0 1 10 0"/><path d="M10 16a3 3 0 0 1 4 0"/><circle cx="12" cy="18.6" r=".9"/>',
+      shield:    '<path d="M12 3.5 5 6v5.5c0 4.3 3 7.6 7 9 4-1.4 7-4.7 7-9V6l-7-2.5z"/><path d="m9 12 2 2 4-4"/>',
+      percent:   '<path d="M18 6 6 18"/><circle cx="7.5" cy="7.5" r="2"/><circle cx="16.5" cy="16.5" r="2"/>',
+      bag:       '<path d="M5.5 8h13l-1 12h-11z"/><path d="M9 10V7a3 3 0 0 1 6 0v3"/>',
+      heart:     '<path d="M12 19.5s-7-4.3-7-9.5a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.2-7 9.5-7 9.5z"/>',
+      book:      '<path d="M5 5.5A1.5 1.5 0 0 1 6.5 4H19v14H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19"/><path d="M9 8h6"/>',
+      users:     '<circle cx="9" cy="9" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="10" r="2.3"/><path d="M15.5 14.6A4.5 4.5 0 0 1 21 19"/>',
+      star:      '<path d="m12 4 2.4 5 5.4.7-4 3.7 1 5.4L12 16.2 7.2 18.8l1-5.4-4-3.7 5.4-.7z"/>',
+      repeat:    '<path d="M4 11V9a3 3 0 0 1 3-3h12"/><path d="m16 3 3 3-3 3"/><path d="M20 13v2a3 3 0 0 1-3 3H5"/><path d="m8 21-3-3 3-3"/>',
+      dots:      '<circle cx="6" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="1.4"/>',
+      briefcase: '<rect x="3.5" y="7.5" width="17" height="12" rx="2"/><path d="M9 7.5V6a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 6v1.5"/><path d="M3.5 12.5h17"/>',
+      store:     '<path d="M4 9.5 5.5 5h13L20 9.5"/><path d="M4 9.5a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0 2.7 2.7 0 0 0 5.3 0"/><path d="M5.5 12v8h13v-8"/><path d="M10 20v-4.5h4V20"/>',
+      laptop:    '<rect x="5" y="5" width="14" height="10" rx="1.5"/><path d="M3 19h18"/>',
+      gift:      '<rect x="4" y="9" width="16" height="11" rx="1.5"/><path d="M3.5 9h17v3h-17zM12 9v11"/><path d="M12 9c-1.5-3-5-3.5-5-1.2C7 9 9.5 9 12 9zm0 0c1.5-3 5-3.5 5-1.2C17 9 14.5 9 12 9z"/>',
+      refund:    '<path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/><path d="M12 8v4l2.5 1.5"/>',
+      transfer:  '<path d="M4 8h14"/><path d="m15 5 3 3-3 3"/><path d="M20 16H6"/><path d="m9 13-3 3 3 3"/>',
+      deposit:   '<path d="M12 4v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M5 19.5h14"/>',
+      withdraw:  '<path d="M12 15V4"/><path d="m7.5 8.5 4.5-4.5 4.5 4.5"/><path d="M5 19.5h14"/>',
+      bank:      '<path d="M4 9.5 12 5l8 4.5"/><path d="M5 10h14"/><path d="M6.5 10v7M10 10v7M14 10v7M17.5 10v7"/><path d="M4.5 19.5h15"/>',
+      phone:     '<rect x="7" y="3.5" width="10" height="17" rx="2.2"/><path d="M11 17.5h2"/>',
+      cash:      '<rect x="3" y="7" width="18" height="10" rx="1.5"/><circle cx="12" cy="12" r="2.3"/><path d="M6 10v4M18 10v4"/>',
+      piggy:     '<path d="M5 11.5a6 5 0 0 1 11.5-2.2H18l1.5-1.8v3.6l1 .9v3l-2 .5-1.3 2.5H15v-1.5h-4V18H8.5L7.5 15.5A5 5 0 0 1 5 11.5z"/><circle cx="15.5" cy="11.5" r=".8"/><path d="M10 7.5h3"/>',
+      trend:     '<path d="M4 18 9.5 12l3.5 3.5L20 8"/><path d="M15 8h5v5"/>',
+      card:      '<rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/>',
+      wallet:    '<path d="M5 7.5h12.5A1.5 1.5 0 0 1 19 9v9a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4 18V8.5"/><path d="M4 8.5A2 2 0 0 1 6 6.5l9-2v3"/><path d="M15.5 13.5h3.5"/>',
+      receipt:   '<path d="M6 3.5h12v17l-2-1.3-2 1.3-2-1.3-2 1.3-2-1.3-2 1.3z"/><path d="M9 8h6M9 11.5h6M9 15h3.5"/>',
+      camera:    '<path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1.5-2h6l1.5 2h2A1.5 1.5 0 0 1 20 8.5V18a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18z"/><circle cx="12" cy="13" r="3.2"/>',
+      link:      '<path d="M10 14a3.5 3.5 0 0 0 5 0l3-3a3.5 3.5 0 0 0-5-5l-1 1"/><path d="M14 10a3.5 3.5 0 0 0-5 0l-3 3a3.5 3.5 0 0 0 5 5l1-1"/>',
+      plus:      '<path d="M12 5v14M5 12h14"/>',
+      minus:     '<path d="M6 12h12"/>',
+      user:      '<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>',
+      pencil:    '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
+      x:         '<path d="M7 7l10 10M17 7 7 17"/>',
+      check:     '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+      clock:     '<circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 1.8"/>',
+      chevron:   '<path d="m9 6 6 6-6 6"/>',
+      list:      '<path d="M9 6.5h11M9 12h11M9 17.5h11"/><circle cx="4.8" cy="6.5" r=".9"/><circle cx="4.8" cy="12" r=".9"/><circle cx="4.8" cy="17.5" r=".9"/>',
+      grid:      '<rect x="4" y="4" width="7" height="7" rx="1.8"/><rect x="13" y="4" width="7" height="7" rx="1.8"/><rect x="4" y="13" width="7" height="7" rx="1.8"/><rect x="13" y="13" width="7" height="7" rx="1.8"/>',
+      download:  '<path d="M12 4v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M5 19.5h14"/>',
+      upload:    '<path d="M12 15V4"/><path d="m7.5 8.5 4.5-4.5 4.5 4.5"/><path d="M5 19.5h14"/>',
+      sparkle:   '<path d="M12 4v4M12 16v4M4 12h4M16 12h4M6.5 6.5l2.3 2.3M15.2 15.2l2.3 2.3M17.5 6.5l-2.3 2.3M8.8 15.2l-2.3 2.3"/>',
+      trash:     '<path d="M5 7h14"/><path d="M9.5 7V5h5v2"/><path d="M6.5 7l1 13h9l1-13"/>',
+      alert:     '<path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5"/><circle cx="12" cy="17" r=".8"/>'
+    };
+    // category -> [glyph, tone]
+    var CAT = {
+      "Housing": ["home", "lavender"], "Utilities": ["bolt", "yellow"], "Food & Groceries": ["cart", "mint"],
+      "Transport": ["car", "sky"], "Phone & Internet": ["wifi", "sky"], "Insurance": ["shield", "lavender"],
+      "Loan & Debt": ["percent", "peach"], "Shopping": ["bag", "peach"], "Health": ["heart", "rose"],
+      "Education": ["book", "yellow"], "Family": ["users", "mint"], "Entertainment": ["star", "lavender"],
+      "Subscriptions": ["repeat", "sky"], "Others": ["dots", "grey"],
+      "Salary": ["briefcase", "mint"], "Business": ["store", "mint"], "Freelance": ["laptop", "mint"],
+      "Bonus": ["sparkle", "yellow"], "Gift": ["gift", "peach"], "Refund": ["refund", "sky"]
+    };
+    var TYPE = { income: ["deposit", "mint"], expense: ["withdraw", "peach"], transfer: ["transfer", "lavender"], deposit: ["deposit", "sky"], withdrawal: ["withdraw", "yellow"] };
+    var ACCOUNT = { bank: ["bank", "sky"], ewallet: ["phone", "lavender"], cash: ["cash", "mint"], savings: ["piggy", "peach"], investment: ["trend", "yellow"], credit: ["card", "rose"], other: ["wallet", "grey"] };
+
+    function svg(name, size){
+      return '<svg class="i" viewBox="0 0 24 24" width="' + (size || 20) + '" height="' + (size || 20) + '" aria-hidden="true">' + (P[name] || P.dots) + '</svg>';
+    }
+    function badge(pair, extra){ return '<span class="ibadge t-' + pair[1] + (extra ? " " + extra : "") + '">' + svg(pair[0]) + '</span>'; }
+    return {
+      svg: svg,
+      category: function(cat, fallbackType){ return badge(CAT[cat] || TYPE[fallbackType] || CAT.Others); },
+      tx: function(t){ return badge((t.type === "income" || t.type === "expense") && CAT[t.category] ? CAT[t.category] : TYPE[t.type]); },
+      account: function(type){ return badge(ACCOUNT[type] || ACCOUNT.other); }
+    };
+  })();
+
+  /* ============================== UI ============================== */
+  var UI = (function(){
+    var state = { view: "dashboard", month: Util.currentMonth(), txFilter: "all" };
+    var $ = function(id){ return document.getElementById(id); };
+    var toastTimer = null;
+
+    function toast(msg, isError){
+      var t = $("toast");
+      t.textContent = msg;
+      t.className = "toast show" + (isError ? " error" : "");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function(){ t.className = "toast"; }, isError ? 3600 : 2000);
+    }
+
+    /* ---------- sheet (modal) ---------- */
+    var sheetCleanup = null;
+    function openSheet(html, onMount, onClose){
+      if(sheetCleanup) sheetCleanup();
+      $("sheet").innerHTML = html;
+      $("overlay").classList.add("show");
+      sheetCleanup = onClose || null;
+      var close = $("sheet").querySelector("[data-close]");
+      if(close) close.addEventListener("click", closeSheet);
+      if(onMount) onMount($("sheet"));
+    }
+    function closeSheet(){
+      $("overlay").classList.remove("show");
+      if(sheetCleanup){ var f = sheetCleanup; sheetCleanup = null; f(); }
+      $("sheet").innerHTML = "";
+    }
+    function confirmSheet(opts){
+      // opts: { title, message, confirmText, danger, onConfirm, altText, onAlt }
+      openSheet(
+        '<div class="sheet-head"><h3>' + Util.esc(opts.title) + '</h3><button class="sheet-close" data-close aria-label="Close">✕</button></div>' +
+        '<p class="msg">' + Util.esc(opts.message) + '</p>' +
+        '<div class="btn-row" style="flex-direction:column;">' +
+          (opts.altText ? '<button class="btn secondary" id="cAlt">' + Util.esc(opts.altText) + '</button>' : '') +
+          '<div class="sheet-actions" style="margin:0;"><button class="btn secondary" data-close-btn>Cancel</button>' +
+          '<button class="btn ' + (opts.danger === false ? "primary" : "danger") + '" id="cOk">' + Util.esc(opts.confirmText || "Delete") + '</button></div>' +
+        '</div>',
+        function(root){
+          root.querySelector("[data-close-btn]").addEventListener("click", closeSheet);
+          $("cOk").addEventListener("click", function(){ closeSheet(); opts.onConfirm && opts.onConfirm(); });
+          if(opts.altText) $("cAlt").addEventListener("click", function(){ closeSheet(); opts.onAlt && opts.onAlt(); });
+        });
+    }
+
+    /* ---------- navigation ---------- */
+    function setView(v){
+      state.view = v;
+      document.querySelectorAll(".view").forEach(function(s){ s.classList.toggle("active", s.id === "view-" + v); });
+      document.querySelectorAll(".nav-btn[data-view]").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-view") === v); });
+      $("viewSubtitle").textContent = $("view-" + v).getAttribute("data-title");
+      render();
+      window.scrollTo(0, 0);
+    }
+    function setMonth(m){ state.month = m; render(); }
+
+    function render(){
+      var lbl = $("monthLabel");
+      lbl.textContent = Util.monthLabel(state.month, true);
+      lbl.classList.toggle("is-current", state.month === Util.currentMonth());
+      renderHeaderProfile();
+      if(!Profiles.active()){   // no profile yet: every screen shows the create-profile step
+        document.querySelectorAll(".view").forEach(function(v){ v.innerHTML = ""; });
+        $("view-" + state.view).innerHTML = signInHtml();
+        return;
+      }
+      ({ dashboard: renderDashboard, transactions: renderTransactions, bills: renderBills, accounts: renderAccounts, more: renderMore })[state.view]();
+    }
+
+    /* ---------- shared bits ---------- */
+    var ui = { openAccounts: false, openActivity: true, openSummary: false }; // remembers collapsible sections
+    function accName(id){ var a = Store.accounts.get(id); return a ? a.name : "(deleted account)"; }
+    function emptyNoAccounts(){
+      return '<div class="card"><div class="empty"><div class="big t-lavender">' + Icons.svg("wallet") + '</div><b>Welcome to Money Tracker</b><br>' +
+        'Start by adding the accounts you use — bank, e-wallet, cash or savings.<br>' +
+        '<button class="btn primary" data-act="add-account">' + Icons.svg("plus") + 'Create your first account</button><br>' +
+        '<button class="btn secondary" data-act="demo" style="margin-top:8px;">Try with demo data</button></div></div>';
+    }
+    function shortDate(iso){ var d = Util.fmtDate(iso); return d.slice(0, d.lastIndexOf(" ")); }
+    function txRow(t){
+      var ty = TX_TYPES[t.type];
+      var title = t.description || (t.type === "transfer" ? "Transfer" : (t.category || ty.t));
+      var sub = t.type === "transfer" ? accName(t.accountId) + " → " + accName(t.toAccountId) : accName(t.accountId);
+      if(t.category && t.type !== "transfer") sub += " · " + t.category;
+      var bill = t.billId ? Store.bills.get(t.billId) : null;
+      var amtCls = ty.sign > 0 ? "pos" : (t.type === "expense" ? "neg" : "");
+      var amt = ty.sign === 0 ? Util.money(t.amount) : Util.money(ty.sign * t.amount, true);
+      return '<div class="list-item">' +
+        '<button class="li-main" data-act="edit-tx" data-id="' + t.id + '">' + Icons.tx(t) +
+          '<span class="li-text"><div class="li-title"><span style="overflow:hidden;text-overflow:ellipsis;">' + Util.esc(title) + '</span>' +
+            (t.receiptId ? '<span class="rcpt-dot" title="Receipt attached">' + Icons.svg("receipt", 14) + '</span>' : '') +
+            (bill ? '<span class="link-dot" title="Pays ' + Util.esc(bill.name) + '">' + Icons.svg("link", 14) + '</span>' : '') + '</div>' +
+          '<div class="li-sub">' + Util.esc(sub) + '</div></span>' +
+          '<span class="li-amt ' + amtCls + '">' + amt + '<small>' + TX_TYPES[t.type].t + '</small></span>' +
+        '</button>' +
+        '<button class="icon-btn" data-act="del-tx" data-id="' + t.id + '" aria-label="Delete transaction">' + Icons.svg("x") + '</button>' +
+      '</div>';
+    }
+    // No overdue badges: only show a chip when it adds information
+    function billChip(st){
+      if(st.status === "paid") return st.over > 0 ? '<span class="chip over">+' + Util.money(st.over) + ' over</span>' : '';
+      if(st.status === "partial") return '<span class="chip partial">' + Util.money(st.paid) + ' paid</span>';
+      return '';
+    }
+    function billCheckbox(b, st){
+      var aria = st.status === "paid" ? "true" : (st.status === "partial" ? "mixed" : "false");
+      var label = st.status === "paid" ? "Mark " + b.name + " as unpaid" : "Mark " + b.name + " as paid";
+      return '<button type="button" class="bill-check ' + st.status + '" role="checkbox" aria-checked="' + aria + '" aria-label="' + Util.esc(label) + '" data-act="toggle-bill" data-id="' + b.id + '">' +
+        '<span class="box">' + Icons.svg(st.status === "partial" ? "minus" : "check") + '</span></button>';
+    }
+    function billRow(b){
+      var st = Ledger.billStatus(b);
+      var acc = b.accountId ? accName(b.accountId) : "No account set";
+      var chip = billChip(st);
+      return '<div class="list-item bill-item' + (st.status === "paid" ? " is-paid" : "") + '">' + billCheckbox(b, st) +
+        '<button class="li-main" data-act="edit-bill" data-id="' + b.id + '" aria-label="Edit ' + Util.esc(b.name) + '">' + Icons.category(b.category, "expense").replace('class="ibadge', 'class="ibadge sm') +
+          '<span class="li-text"><div class="li-title"><span style="overflow:hidden;text-overflow:ellipsis;">' + Util.esc(b.name) + '</span>' +
+            (b.receiptId ? '<span class="rcpt-dot">' + Icons.svg("receipt", 14) + '</span>' : '') + '</div>' +
+          '<div class="li-sub">Due ' + shortDate(b.dueDate) + ' · <span class="acct-name">' + Util.esc(acc) + '</span></div>' + (chip ? '<div class="li-meta">' + chip + '</div>' : '') + '</span>' +
+          '<span class="li-amt">' + Util.money(b.amount) + (st.status === "partial" ? '<small>' + Util.money(st.remaining) + ' left</small>' : '') + '</span>' +
+        '</button>' +
+      '</div>';
+    }
+    function fold(key, title, meta, body){
+      return '<details class="fold" data-fold="' + key + '"' + (ui[key] ? " open" : "") + '><summary><span class="sum-title">' + title + '</span>' +
+        '<span class="sum-meta">' + meta + '</span><span class="chev">' + Icons.svg("chevron", 18) + '</span></summary><div class="fold-body">' + body + '</div></details>';
+    }
+
+    /* ---------- Dashboard ---------- */
+    function renderDashboard(){
+      var el = $("view-dashboard");
+      if(Store.accounts.list(true).length === 0){ el.innerHTML = emptyNoAccounts(); return; }
+      var s = Ledger.monthSummary(state.month);
+      var pct = s.planned > 0 ? Math.min(100, Math.round(s.plannedPaid / s.planned * 100)) : 0;
+      // unpaid first (by due date); paid ones stay visible below so they can be unticked
+      var reserved = Store.bills.list().filter(function(b){ return Util.monthOf(b.dueDate) === state.month; })
+        .map(function(b){ return { b: b, paid: Ledger.billStatus(b).status === "paid" }; })
+        .sort(function(x, y){ return x.paid !== y.paid ? (x.paid ? 1 : -1) : (x.b.dueDate < y.b.dueDate ? -1 : 1); })
+        .map(function(x){ return x.b; });
+      var recent = Store.transactions.list().filter(function(t){ return Util.monthOf(t.date) === state.month; })
+        .sort(function(a, b){ return a.date === b.date ? (a.createdAt < b.createdAt ? 1 : -1) : (a.date < b.date ? 1 : -1); });
+
+      var hero =
+        '<section class="hero">' +
+          '<div class="hero-label">' + Icons.svg("wallet", 16) + 'Available to spend</div>' +
+          '<div class="hero-value num' + (s.remainingAvailable < 0 ? " neg" : "") + '" id="dRemaining">' + Util.money(s.remainingAvailable) + '</div>' +
+          '<div class="hero-note">' + (s.remainingAvailable < 0 ? "Reserved bills are more than your spendable money." :
+            "Spendable accounts " + Util.money(s.availableBalance) + " minus reserved bills") + '</div>' +
+          '<div class="hero-split">' +
+            '<div><span>Actual balance</span><b class="num" id="dTotal">' + Util.money(s.totalBalance) + '</b></div>' +
+            '<div><span>Reserved</span><b class="num" id="dPending">' + Util.money(s.pending) + '</b></div>' +
+          '</div>' +
+        '</section>';
+
+      var duo =
+        '<div class="duo">' +
+          '<div class="stat t-mint"><div class="top"><span class="ibadge sm">' + Icons.svg("deposit") + '</span>Income</div>' +
+            '<div class="val num" id="dIncome">' + Util.money(s.income) + '</div><small>' + Util.monthLabel(state.month) + '</small></div>' +
+          '<div class="stat t-peach"><div class="top"><span class="ibadge sm">' + Icons.svg("withdraw") + '</span>Expenses</div>' +
+            '<div class="val num" id="dExpenses">' + Util.money(s.expenses) + '</div><small>Bills ' + Util.money(s.billPayments) + ' · Other ' + Util.money(s.otherSpending) + '</small></div>' +
+        '</div>';
+
+      var bills =
+        '<div class="card"><h2>Reserved expenses <button class="link" data-goto="bills">All bills</button></h2>' +
+          (s.billCount === 0
+            ? '<div class="empty" style="padding:10px 6px;">No bills planned for ' + Util.monthLabel(state.month) + '.</div><button class="add-btn" data-act="add-bill">' + Icons.svg("plus") + 'Add a bill</button>'
+            : '<div class="sec-sub">' + s.billsPaidCount + ' of ' + s.billCount + ' paid · ' + Util.money(s.plannedPaid) + ' of ' + Util.money(s.planned) +
+                '<span class="pct">' + pct + '%</span></div>' +
+              '<div class="progress"><span style="width:' + pct + '%"></span></div>' +
+              reserved.map(billRow).join("")) +
+        '</div>';
+
+      var accountsBody = s.balances.map(function(x){
+        return '<div class="row-line"><span class="label">' + Icons.account(x.account.type).replace('class="ibadge', 'class="ibadge sm') +
+          '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + Util.esc(x.account.name) + '</span>' +
+          (x.account.includeInAvailable ? '' : '<span class="chip soft">saved</span>') + '</span>' +
+          '<span class="value' + (x.balance < 0 ? " neg" : "") + '">' + Util.money(x.balance) + '</span></div>';
+      }).join("") + '<button class="add-btn" data-goto="accounts">Manage accounts</button>';
+
+      var activityBody = (recent.length ? recent.slice(0, 6).map(txRow).join("") : '<div class="empty" style="padding:8px;">No transactions in ' + Util.monthLabel(state.month) + ' yet.</div>') +
+        (recent.length > 6 ? '<button class="add-btn" data-goto="transactions">See all ' + recent.length + ' transactions</button>' : '<button class="add-btn" data-act="add-tx">' + Icons.svg("plus") + 'Add transaction</button>');
+
+      var summaryBody =
+        '<div class="row-line"><span class="label">Income</span><span class="value pos">' + Util.money(s.income) + '</span></div>' +
+        '<div class="row-line"><span class="label">Bill payments</span><span class="value">' + Util.money(-s.billPayments) + '</span></div>' +
+        '<div class="row-line"><span class="label">Other spending</span><span class="value">' + Util.money(-s.otherSpending) + '</span></div>' +
+        '<div class="row-line total"><span class="label">Net cash flow</span><span class="value ' + (s.netFlow < 0 ? "neg" : "pos") + '">' + Util.money(s.netFlow, true) + '</span></div>' +
+        '<div class="row-line"><span class="label">Moved into savings</span><span class="value">' + Util.money(s.toSavings) + '</span></div>' +
+        '<div class="row-line"><span class="label">Taken out of savings</span><span class="value">' + Util.money(s.fromSavings) + '</span></div>' +
+        '<div class="row-line"><span class="label">Transfers (' + s.transferCount + ')</span><span class="value">' + Util.money(s.transfers) + '</span></div>' +
+        '<div class="row-line"><span class="label">Deposits</span><span class="value">' + Util.money(s.deposits) + '</span></div>' +
+        '<div class="row-line"><span class="label">Withdrawals</span><span class="value">' + Util.money(s.withdrawals) + '</span></div>' +
+        '<p class="muted" style="margin:6px 0 0;">Transfers, deposits and withdrawals move money between places — they are not income or expenses.</p>';
+
+      el.innerHTML =
+        '<div class="col">' + hero + duo + bills + '</div>' +
+        '<div class="col">' +
+          fold("openAccounts", "Account balances", Util.money(s.totalBalance), accountsBody) +
+          fold("openActivity", "Recent activity", recent.length + (recent.length === 1 ? " item" : " items"), activityBody) +
+          fold("openSummary", "Monthly summary", '<span class="' + (s.netFlow < 0 ? "neg" : "pos") + '">' + Util.money(s.netFlow, true) + '</span>', summaryBody) +
+        '</div>';
+      el.querySelectorAll("details.fold").forEach(function(d){
+        d.addEventListener("toggle", function(){ ui[d.getAttribute("data-fold")] = d.open; });
+      });
+    }
+
+    /* ---------- Transactions ---------- */
+    function renderTransactions(){
+      var el = $("view-transactions");
+      if(Store.accounts.list(true).length === 0){ el.innerHTML = emptyNoAccounts(); return; }
+      var filters = [["all", "All"], ["income", "Income"], ["expense", "Expenses"], ["transfer", "Transfers"], ["move", "Deposits & withdrawals"]];
+      var list = Store.transactions.list().filter(function(t){
+        if(Util.monthOf(t.date) !== state.month) return false;
+        var f = state.txFilter;
+        return f === "all" || t.type === f || (f === "move" && (t.type === "deposit" || t.type === "withdrawal"));
+      }).sort(function(a, b){ return a.date === b.date ? (a.createdAt < b.createdAt ? 1 : -1) : (a.date < b.date ? 1 : -1); });
+      var html = '<div class="page-title">Transactions</div><div class="filters">' + filters.map(function(f){
+        return '<button class="filter' + (state.txFilter === f[0] ? " active" : "") + '" data-filter="' + f[0] + '">' + f[1] + '</button>';
+      }).join("") + '</div>';
+      if(!list.length){
+        html += '<div class="card">';
+        html += '<div class="empty"><div class="big t-sky">' + Icons.svg("list") + '</div>No ' + (state.txFilter === "all" ? "" : "matching ") + 'transactions in ' + Util.monthLabel(state.month) + '.</div>';
+      } else {
+        // group by date; daily income / expense totals (display only)
+        var days = [], byDay = {};
+        list.forEach(function(t){ if(!byDay[t.date]){ byDay[t.date] = []; days.push(t.date); } byDay[t.date].push(t); });
+        days.forEach(function(d){
+          var inc = 0, exp = 0;
+          byDay[d].forEach(function(t){ if(t.type === "income") inc += t.amount; else if(t.type === "expense") exp += t.amount; });
+          html += '<section class="tx-day"><div class="tx-day-head"><span class="d">' + Util.fmtDate(d) + '</span><span class="tot">' +
+            (inc ? '<span class="pos">' + Util.money(inc, true) + '</span>' : '') + (exp ? '<span class="neg">' + Util.money(-exp) + '</span>' : '') +
+            '</span></div><div class="card">' + byDay[d].map(txRow).join("") + '</div></section>';
+        });
+        html += '<div>';
+      }
+      html += '<button class="add-btn" data-act="add-tx">' + Icons.svg("plus") + 'Add transaction</button></div>';   // closes the empty-state card or the wrapper div
+      el.innerHTML = html;
+    }
+
+    /* ---------- Bills ---------- */
+    function renderBills(){
+      var el = $("view-bills");
+      if(Store.accounts.list(true).length === 0){ el.innerHTML = emptyNoAccounts(); return; }
+      var s = Ledger.monthSummary(state.month);
+      var bills = Store.bills.list().filter(function(b){ return Util.monthOf(b.dueDate) === state.month; })
+        .sort(function(a, b){ return a.dueDate < b.dueDate ? -1 : (a.dueDate > b.dueDate ? 1 : a.name.localeCompare(b.name)); });
+      var unpaidEarlier = Store.bills.list().filter(function(b){ return Util.monthOf(b.dueDate) < state.month && Ledger.billStatus(b).remaining > 0; });
+      var prevMonth = Util.addMonths(state.month, -1);
+      var prevCount = Store.bills.list().filter(function(b){ return Util.monthOf(b.dueDate) === prevMonth; }).length;
+      el.innerHTML =
+        '<div class="page-title">Bills</div>' +
+        '<div class="duo">' +
+          '<div class="stat t-lavender"><div class="top"><span class="ibadge sm">' + Icons.svg("receipt") + '</span>Planned</div><div class="val num">' + Util.money(s.planned) + '</div><small>' + s.billCount + ' bill(s)</small></div>' +
+          '<div class="stat t-sky"><div class="top"><span class="ibadge sm">' + Icons.svg("clock") + '</span>Reserved</div><div class="val num" id="bPending">' + Util.money(s.pending) + '</div><small>still to pay</small></div>' +
+        '</div>' +
+        (unpaidEarlier.length ? '<div class="warn">' + Icons.svg("alert") + '<span>' + unpaidEarlier.length + ' bill(s) from earlier months are still unpaid. Go back with ‹ to see them.</span></div>' : '') +
+        '<div class="card"><h2>' + Util.monthLabel(state.month) + '</h2>' +
+          (bills.length ? bills.map(billRow).join("") :
+            '<div class="empty"><div class="big t-lavender">' + Icons.svg("receipt") + '</div>No bills planned for ' + Util.monthLabel(state.month) + '.<br>Reserved bills lower “Available to spend” but don’t touch balances until paid.' +
+            (prevCount ? '<br><button class="btn secondary" data-act="copy-bills" style="margin-top:10px;">Copy ' + prevCount + ' bill(s) from ' + Util.monthLabel(prevMonth, true) + '</button>' : '') + '</div>') +
+          '<button class="add-btn" data-act="add-bill">' + Icons.svg("plus") + 'Add bill / reserved expense</button>' +
+        '</div>';
+    }
+
+    /* ---------- Accounts ---------- */
+    function renderAccounts(){
+      var el = $("view-accounts");
+      var all = Store.accounts.list(true);
+      if(all.length === 0){ el.innerHTML = emptyNoAccounts(); return; }
+      var end = Util.endOfMonth(state.month);
+      var total = 0;
+      function row(a, count){
+        var bal = Ledger.balance(a.id, end); if(count) total += bal;
+        var t = accountType(a.type);
+        return '<div class="list-item">' +
+          '<button class="li-main" data-act="edit-account" data-id="' + a.id + '">' + Icons.account(a.type) +
+            '<span class="li-text"><div class="li-title">' + Util.esc(a.name) + (a.archived ? ' <span class="chip soft">Archived</span>' : '') + '</div>' +
+            '<div class="li-sub">' + t.t + ' · Opening ' + Util.money(a.openingBalance) + (a.includeInAvailable ? '' : ' · saved') + '</div></span>' +
+            '<span class="li-amt' + (bal < 0 ? " neg" : "") + '">' + Util.money(bal) + '</span>' +
+          '</button></div>';
+      }
+      var active = all.filter(function(a){ return !a.archived; }), archived = all.filter(function(a){ return a.archived; });
+      var rows = active.map(function(a){ return row(a, true); }).join("");
+      var html = '<div class="title-row"><div class="page-title">Accounts</div><button class="btn primary small" data-act="add-account">' + Icons.svg("plus") + 'Create Account</button></div>' +
+        '<section class="hero"><div class="hero-label">' + Icons.svg("wallet", 16) + 'Total balance</div>' +
+          '<div class="hero-value num' + (total < 0 ? " neg" : "") + '" id="aTotal">' + Util.money(total) + '</div>' +
+          '<div class="hero-note">' + active.length + ' account' + (active.length === 1 ? "" : "s") + ' · at ' + Util.fmtDate(end) + '</div></section>' +
+        '<div class="card">' + rows +
+        '<button class="add-btn" data-act="add-account">' + Icons.svg("plus") + 'Create account</button></div>';
+      if(archived.length) html += '<div class="card"><h2>Archived</h2>' + archived.map(function(a){ return row(a, false); }).join("") + '</div>';
+      html += '<button class="btn secondary" style="width:100%;" data-act="add-transfer">' + Icons.svg("transfer") + 'Transfer between accounts</button>';
+      el.innerHTML = html;
+    }
+
+    /* ---------- More ---------- */
+    function moreRow(tone, icon, title, sub, action){
+      return '<div class="more-row"><span class="ibadge t-' + tone + '">' + Icons.svg(icon) + '</span><span class="txt">' + title + '<small>' + sub + '</small></span>' + action + '</div>';
+    }
+    function renderMore(){
+      $("view-more").innerHTML =
+        '<div class="page-title">More</div>' + profileSection() +
+        '<div class="card"><h2>Export</h2>' +
+          moreRow("mint", "download", "Excel — " + Util.monthLabel(state.month, true), "Summary, income, expenses, bills, movements", '<button class="btn small secondary" data-act="export-month">Download</button>') +
+          moreRow("sky", "download", "Excel — all records", "Every month in one workbook", '<button class="btn small secondary" data-act="export-all">Download</button>') +
+          '<p class="muted" style="margin:8px 0 0;">Built in your browser — no internet needed. Receipt images aren’t included, only whether one exists.</p></div>' +
+        '<div class="card"><h2>Backup</h2>' +
+          moreRow("lavender", "download", "Download backup", "This profile and its records as a .json file", '<button class="btn small secondary" data-act="backup">Save</button>') +
+          moreRow("yellow", "upload", "Restore backup", "Replaces this profile’s records only", '<label class="btn small secondary pick" style="box-shadow:none;">Choose<input type="file" accept="application/json,.json" id="restoreInput"></label>') +
+        '</div>' +
+        '<div class="card"><h2>Data</h2>' +
+          moreRow("peach", "sparkle", "Demo data", "Try the app with sample records", '<button class="btn small secondary" data-act="demo">Load</button>') +
+          ((Store.legacy() && !Profiles.legacyMigratedTo()) ? moreRow("sky", "upload", "Import earlier data", "Data saved before profiles (" + Store.legacy().counts + ")", '<button class="btn small secondary" data-act="import-legacy">Import</button>') : '') +
+          moreRow("rose", "trash", "Delete this profile’s data", "Accounts, transactions, bills, receipts", '<button class="btn small ghost-danger" data-act="reset">Delete</button>') +
+        '</div>' +
+        '<footer class="foot">Money Tracker prototype · everything stays in this browser</footer>';
+    }
+
+    /* ======================= FORMS ======================= */
+    function fieldErr(root, name, msg){
+      var f = root.querySelector('[data-field="' + name + '"]');
+      if(!f) return;
+      f.classList.toggle("invalid", !!msg);
+      var e = f.querySelector(".err"); if(e) e.textContent = msg || "";
+    }
+    function accountOptions(selected, excludeId){
+      var accs = Store.accounts.list(false).slice();
+      var sel = selected && Store.accounts.get(selected);
+      if(sel && sel.archived) accs.push(sel); // keep archived selection visible when editing
+      return '<option value="">Choose account…</option>' + accs.filter(function(a){ return a.id !== excludeId; }).map(function(a){
+        return '<option value="' + a.id + '"' + (a.id === selected ? " selected" : "") + '>' + Util.esc(a.name) + '</option>';
+      }).join("");
+    }
+    function opts(list, selected){
+      return list.map(function(x){ return '<option' + (x === selected ? " selected" : "") + '>' + Util.esc(x) + '</option>'; }).join("");
+    }
+
+    /* receipt widget used by transaction + bill forms.
+       Keeps changes in memory until the form is saved. */
+    function receiptWidget(root, existingId){
+      var st = { existingId: existingId || null, newFile: null, removed: false, previewUrl: null };
+      var area = root.querySelector(".receipt-area");
+      function draw(){
+        if(st.previewUrl){ URL.revokeObjectURL(st.previewUrl); st.previewUrl = null; }
+        var has = st.newFile || (st.existingId && !st.removed);
+        area.innerHTML = has
+          ? '<img class="thumb" alt="Receipt preview"><span class="r-text">Receipt attached</span>' +
+            '<button type="button" class="link-btn" data-r="view">View</button>' +
+            '<label class="link-btn" style="position:relative;overflow:hidden;cursor:pointer;">Replace<input type="file" accept="image/*" style="position:absolute;inset:0;opacity:0;font-size:16px;"></label>' +
+            '<button type="button" class="link-btn red" data-r="remove">Remove</button>'
+          : '<span class="r-text">No receipt</span><label class="pick">' + Icons.svg("camera") + 'Add receipt<input type="file" accept="image/*" aria-label="Take photo or choose receipt image"></label>';
+        if(has){
+          var img = area.querySelector(".thumb");
+          var p = st.newFile ? Promise.resolve(URL.createObjectURL(st.newFile)) : Receipts.getUrl(st.existingId);
+          p.then(function(u){ if(u){ st.previewUrl = u; img.src = u; } else { img.alt = "Missing"; } }).catch(function(){});
+          img.addEventListener("click", view);
+          area.querySelector('[data-r="view"]').addEventListener("click", view);
+          area.querySelector('[data-r="remove"]').addEventListener("click", function(){ st.newFile = null; st.removed = true; draw(); });
+        }
+        var input = area.querySelector('input[type=file]');
+        input.addEventListener("change", function(){
+          var f = input.files && input.files[0];
+          var err = Receipts.validate(f);
+          if(err){ toast(err, true); return; }
+          st.newFile = f; st.removed = false; draw();
+        });
+      }
+      function view(){
+        if(!st.previewUrl) return;
+        var w = window.open("", "_blank");
+        if(w){ w.document.write('<title>Receipt</title><body style="margin:0;background:#111;display:flex;justify-content:center"><img src="' + st.previewUrl + '" style="max-width:100%;height:auto">'); }
+        else toast("Allow pop-ups to view the full receipt.", true);
+      }
+      draw();
+      return {
+        // returns the receiptId to store on the record after saving
+        commit: function(){
+          var oldId = st.existingId;
+          if(st.newFile){
+            return Receipts.save(st.newFile).then(function(id){ if(oldId) Receipts.remove(oldId).catch(function(){}); return id; });
+          }
+          if(st.removed && oldId) return Receipts.remove(oldId).then(function(){ return null; }, function(){ return null; });
+          return Promise.resolve(oldId);
+        },
+        dispose: function(){ if(st.previewUrl) URL.revokeObjectURL(st.previewUrl); }
+      };
+    }
+
+    /* ---------- Transaction form ---------- */
+    function openTxForm(txId, preset){
+      if(Store.accounts.list(false).length === 0){ toast("Add an account first.", true); setView("accounts"); return; }
+      var t = txId ? Store.transactions.get(txId) : null;
+      var isEdit = !!t;
+      t = t ? JSON.parse(JSON.stringify(t)) : Object.assign({
+        id: Util.uid("tx_"), type: "expense", amount: "", date: defaultDate(), accountId: (Store.accounts.list(false)[0] || {}).id,
+        toAccountId: null, description: "", category: "", billId: null, receiptId: null, note: "", createdAt: new Date().toISOString()
+      }, preset || {});
+      var widget = null;
+      openSheet(
+        '<div class="sheet-head"><h3>' + (isEdit ? "Edit" : "New") + ' transaction</h3><button class="sheet-close" data-close aria-label="Close">✕</button></div>' +
+        '<form id="txForm" novalidate>' +
+          '<div class="field amt-hero" data-field="amount"><label for="fAmount">Amount</label><div class="amount-input"><span>RM</span>' +
+            '<input id="fAmount" inputmode="decimal" autocomplete="off" placeholder="0.00" value="' + (t.amount === "" ? "" : t.amount) + '"></div><div class="err"></div></div>' +
+          '<div class="frow">' +
+            '<div class="field type-' + t.type + '" data-field="type"><label for="fType">Type</label><select id="fType">' +
+              Object.keys(TX_TYPES).map(function(k){ return '<option value="' + k + '"' + (k === t.type ? " selected" : "") + '>' + TX_TYPES[k].t + '</option>'; }).join("") +
+            '</select></div>' +
+            '<div class="field" data-field="date"><label for="fDate">Date</label><input id="fDate" type="date" value="' + t.date + '"><div class="err"></div></div>' +
+          '</div>' +
+          '<div class="field" data-field="description"><label for="fDesc">Description</label><input id="fDesc" maxlength="80" placeholder="e.g. Groceries" value="' + Util.esc(t.description) + '"><div class="err"></div></div>' +
+          '<div class="frow wrap-xs">' +
+            '<div class="field" data-field="account"><label for="fAcc" id="fAccLabel">Account</label><select id="fAcc">' + accountOptions(t.accountId) + '</select><div class="err"></div></div>' +
+            '<div class="field" data-field="to" id="fToWrap"><label for="fTo">To account</label><select id="fTo">' + accountOptions(t.toAccountId) + '</select><div class="err"></div></div>' +
+          '</div>' +
+          '<div class="field" data-field="category" id="fCatWrap"><label for="fCat">Category</label><select id="fCat"></select></div>' +
+          '<div class="field" data-field="bill" id="fBillWrap"><label for="fBill">Pays bill (optional)</label><select id="fBill"></select>' +
+            '<div class="hint" id="fBillHint"></div><div class="err"></div></div>' +
+          '<div class="receipt-area"></div>' +
+          '<div class="field"><label for="fNote">Note (optional)</label><input id="fNote" maxlength="200" value="' + Util.esc(t.note) + '"></div>' +
+          '<div class="sheet-actions">' + (isEdit ? '<button type="button" class="btn del" id="fDelete">Delete</button>' : '') +
+            '<button type="button" class="btn secondary" data-cancel>Cancel</button><button type="submit" class="btn primary">Save</button></div>' +
+        '</form>',
+        function(root){
+          var fType = $("fType"), fCat = $("fCat"), fBill = $("fBill");
+          widget = receiptWidget(root, t.receiptId);
+          root.querySelector("[data-cancel]").addEventListener("click", closeSheet);
+          function syncType(){
+            var ty = fType.value;
+            root.querySelector('[data-field="type"]').className = "field type-" + ty;
+            $("fToWrap").style.display = ty === "transfer" ? "" : "none";
+            $("fAccLabel").textContent = ty === "transfer" ? "From account" : "Account";
+            $("fCatWrap").style.display = (ty === "income" || ty === "expense") ? "" : "none";
+            var cats = ty === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+            var cur = fCat.value || t.category;
+            fCat.innerHTML = '<option value="">—</option>' + opts(cats, cur);
+            $("fBillWrap").style.display = ty === "expense" ? "" : "none";
+            if(ty === "expense") fillBills();
+          }
+          function fillBills(){
+            var cur = fBill.value || t.billId || "";
+            var m = Util.monthOf($("fDate").value) || state.month;
+            var bills = Store.bills.list().filter(function(b){
+              return b.id === cur || Ledger.billStatus(b).remaining > 0 && Math.abs(monthsBetween(Util.monthOf(b.dueDate), m)) <= 2;
+            }).sort(function(a, b){ return a.dueDate < b.dueDate ? -1 : 1; });
+            fBill.innerHTML = '<option value="">Not a planned bill</option>' + bills.map(function(b){
+              var st = Ledger.billStatus(b);
+              var remainingExcludingThis = st.remaining + (isEdit && b.id === t.billId ? Math.min(Store.transactions.get(t.id).amount, b.amount) : 0);
+              return '<option value="' + b.id + '"' + (b.id === cur ? " selected" : "") + '>' + Util.esc(b.name) + ' — ' + Util.money(Math.min(remainingExcludingThis, b.amount)) + ' due ' + Util.fmtDate(b.dueDate) + '</option>';
+            }).join("");
+            billHint();
+          }
+          function billHint(){
+            var b = Store.bills.get(fBill.value);
+            var hint = $("fBillHint");
+            if(!b){ hint.textContent = ""; return; }
+            var st = Ledger.billStatus(b);
+            var others = st.paid - (isEdit && t.billId === b.id ? Store.transactions.get(t.id).amount : 0);
+            var amt = Util.parseAmount($("fAmount").value) || 0;
+            var after = Util.r2(others + amt);
+            hint.textContent = after > b.amount
+              ? "⚠️ This makes " + Util.money(after) + " paid on a " + Util.money(b.amount) + " bill (" + Util.money(after - b.amount) + " over). The account is still charged the real amount."
+              : "Bill: " + Util.money(b.amount) + " · after this payment " + Util.money(after) + " paid, " + Util.money(b.amount - after) + " left.";
+            hint.style.color = after > b.amount ? "#b45309" : "";
+          }
+          fType.addEventListener("change", syncType);
+          $("fDate").addEventListener("change", function(){ if(fType.value === "expense") fillBills(); });
+          fBill.addEventListener("change", function(){
+            var b = Store.bills.get(fBill.value);
+            if(b){
+              if(!$("fDesc").value) $("fDesc").value = b.name;
+              if(!$("fAmount").value){ $("fAmount").value = Ledger.billStatus(b).remaining.toFixed(2); }
+              fCat.value = b.category;
+              if(b.accountId && Store.accounts.get(b.accountId) && !Store.accounts.get(b.accountId).archived) $("fAcc").value = b.accountId;
+            }
+            billHint();
+          });
+          $("fAmount").addEventListener("input", billHint);
+          syncType();
+
+          if(isEdit) $("fDelete").addEventListener("click", function(){ closeSheet(); deleteTx(t.id); });
+
+          $("txForm").addEventListener("submit", function(e){
+            e.preventDefault();
+            var ty = fType.value, ok = true;
+            var amt = Util.parseAmount($("fAmount").value);
+            fieldErr(root, "amount", amt === null ? "Enter an amount above 0 (max 2 decimals)." : ""); ok = ok && amt !== null;
+            var acc = $("fAcc").value;
+            fieldErr(root, "account", acc ? "" : "Choose an account."); ok = ok && !!acc;
+            var to = ty === "transfer" ? $("fTo").value : null;
+            if(ty === "transfer"){
+              var toErr = !to ? "Choose where the money goes." : (to === acc ? "From and to must be different accounts." : "");
+              fieldErr(root, "to", toErr); ok = ok && !toErr;
+            }
+            var date = $("fDate").value;
+            fieldErr(root, "date", Util.isISODate(date) ? "" : "Choose a valid date."); ok = ok && Util.isISODate(date);
+            var desc = $("fDesc").value.trim();
+            if(!ok){ toast("Please fix the highlighted fields.", true); return; }
+            var btn = root.querySelector('button[type=submit]'); btn.disabled = true; btn.textContent = "Saving…";
+            widget.commit().then(function(receiptId){
+              var rec = {
+                id: t.id, type: ty, amount: amt, date: date, accountId: acc, toAccountId: to,
+                description: desc, category: (ty === "income" || ty === "expense") ? fCat.value : "",
+                billId: ty === "expense" ? (fBill.value || null) : null,
+                receiptId: receiptId, note: $("fNote").value.trim(), createdAt: t.createdAt
+              };
+              Store.transactions.save(rec);
+              closeSheet();
+              toast(isEdit ? "Transaction updated" : "Transaction added");
+              if(Util.monthOf(date) !== state.month){ state.month = Util.monthOf(date); }
+              render();
+            }).catch(function(err){
+              btn.disabled = false; btn.textContent = "Save";
+              toast("Receipt couldn't be saved: " + (err && err.message || err), true);
+            });
+          });
+        },
+        function(){ if(widget) widget.dispose(); }
+      );
+    }
+    function monthsBetween(a, b){ return (+a.slice(0, 4) - +b.slice(0, 4)) * 12 + (+a.slice(5, 7) - +b.slice(5, 7)); }
+    function defaultDate(){ return state.month === Util.currentMonth() ? Util.todayISO() : state.month + "-01"; }
+
+    function deleteTx(id){
+      var t = Store.transactions.get(id); if(!t) return;
+      var b = t.billId ? Store.bills.get(t.billId) : null;
+      confirmSheet({
+        title: "Delete this transaction?",
+        message: TX_TYPES[t.type].t + " of " + Util.money(t.amount) + " on " + Util.fmtDate(t.date) + " will be removed and the account balance restored." +
+          (b ? "\n\nIt is a payment for “" + b.name + "”, so that bill will go back to unpaid by " + Util.money(Math.min(t.amount, b.amount)) + "." : "") +
+          (t.receiptId ? "\n\nIts receipt image will also be deleted." : ""),
+        confirmText: "Delete",
+        onConfirm: function(){
+          var r = Store.transactions.remove(id);
+          if(r && r.receiptId) Receipts.remove(r.receiptId).catch(function(){});
+          toast("Transaction deleted");
+          render();
+        }
+      });
+    }
+
+    /* ---------- Bill form + detail ---------- */
+    function openBillForm(billId){
+      var b = billId ? Store.bills.get(billId) : null;
+      var isEdit = !!b;
+      b = b ? JSON.parse(JSON.stringify(b)) : { id: Util.uid("bill_"), name: "", amount: "", dueDate: defaultDate(), category: "Others",
+        accountId: (Store.accounts.list(false)[0] || {}).id || null, receiptId: null, note: "", createdAt: new Date().toISOString() };
+      var widget = null;
+      var st0 = isEdit ? Ledger.billStatus(b) : null;
+      var paidInfo = st0 && st0.payments.length ? "Paid " + Util.money(st0.paid) + " of " + Util.money(b.amount) + " · " + st0.payments.length + " linked payment" + (st0.payments.length > 1 ? "s" : "") : "";
+      openSheet(
+        '<div class="sheet-head"><h3>' + (isEdit ? "Edit bill" : "Add bill") + '</h3><button class="sheet-close" data-close aria-label="Close">✕</button></div>' +
+        '<form id="billForm" novalidate>' +
+          '<div class="field" data-field="name"><label for="bName">Name</label><input id="bName" maxlength="80" placeholder="e.g. Internet" value="' + Util.esc(b.name) + '"><div class="err"></div></div>' +
+          '<div class="field amt-hero" data-field="amount"><label for="bAmount">Amount</label><div class="amount-input"><span>RM</span><input id="bAmount" inputmode="decimal" placeholder="0.00" value="' + b.amount + '"></div><div class="err"></div></div>' +
+          '<div class="field" data-field="due"><label for="bDue">Due date</label><input id="bDue" type="date" value="' + b.dueDate + '"><div class="err"></div></div>' +
+          '<div class="frow wrap-xs">' +
+            '<div class="field"><label for="bCat">Category</label><select id="bCat">' + opts(EXPENSE_CATEGORIES, b.category) + '</select></div>' +
+            '<div class="field"><label for="bAcc">Account</label><select id="bAcc">' + accountOptions(b.accountId).replace("Choose account…", "Not set") + '</select></div>' +
+          '</div>' +
+          '<div class="receipt-area"></div>' +
+          '<div class="field"><label for="bNote">Note (optional)</label><input id="bNote" maxlength="200" value="' + Util.esc(b.note) + '"></div>' +
+          (paidInfo ? '<div class="bill-paid-line">' + paidInfo + '</div>' : '') +
+          '<div class="sheet-actions">' + (isEdit ? '<button type="button" class="btn del" id="bDelete">' + Icons.svg("trash") + 'Delete Bill</button>' : '') +
+            '<button type="button" class="btn secondary" data-cancel>Cancel</button><button type="submit" class="btn primary">Save</button></div>' +
+        '</form>',
+        function(root){
+          widget = receiptWidget(root, b.receiptId);
+          root.querySelector("[data-cancel]").addEventListener("click", closeSheet);
+          if(isEdit) $("bDelete").addEventListener("click", function(){ deleteBill(b.id); });
+          // Saving a bill only updates the bill. It never creates or changes a payment.
+          $("billForm").addEventListener("submit", function(e){
+            e.preventDefault();
+            var name = $("bName").value.trim(), amt = Util.parseAmount($("bAmount").value), due = $("bDue").value;
+            fieldErr(root, "name", name ? "" : "Give the bill a name.");
+            fieldErr(root, "amount", amt === null ? "Enter an amount above 0 (max 2 decimals)." : "");
+            fieldErr(root, "due", Util.isISODate(due) ? "" : "Choose a due date.");
+            if(!name || amt === null || !Util.isISODate(due)){ toast("Please fix the highlighted fields.", true); return; }
+            widget.commit().then(function(receiptId){
+              Store.bills.save({ id: b.id, name: name, amount: amt, dueDate: due, category: $("bCat").value, accountId: $("bAcc").value || null,
+                receiptId: receiptId, note: $("bNote").value.trim(), createdAt: b.createdAt });
+              closeSheet();
+              toast(isEdit ? "Bill updated" : "Bill added");
+              state.month = Util.monthOf(due);
+              render();
+            }).catch(function(err){ toast("Receipt couldn't be saved: " + (err && err.message || err), true); });
+          });
+        },
+        function(){ if(widget) widget.dispose(); }
+      );
+    }
+
+    function payBill(id){
+      var b = Store.bills.get(id); if(!b) return;
+      var st = Ledger.billStatus(b);
+      openTxForm(null, {
+        type: "expense", amount: st.remaining > 0 ? st.remaining : "", description: b.name, category: b.category, billId: b.id,
+        accountId: (b.accountId && Store.accounts.get(b.accountId) && !Store.accounts.get(b.accountId).archived) ? b.accountId : (Store.accounts.list(false)[0] || {}).id,
+        date: Util.todayISO()
+      });
+    }
+
+    function deleteBill(id){
+      var b = Store.bills.get(id); if(!b) return;
+      var pays = Store.transactions.forBill(id);
+      function cleanup(res){
+        if(res.bill && res.bill.receiptId) Receipts.remove(res.bill.receiptId).catch(function(){});
+        res.removedTx.forEach(function(t){ if(t.receiptId) Receipts.remove(t.receiptId).catch(function(){}); });
+        toast("Bill deleted"); render();
+      }
+      if(!pays.length){
+        confirmSheet({ title: "Delete “" + b.name + "”?", message: "This bill has no payments, so only the bill is removed. No balances change.", onConfirm: function(){ cleanup(Store.bills.remove(id, true)); } });
+        return;
+      }
+      var total = pays.reduce(function(s, t){ return s + t.amount; }, 0);
+      confirmSheet({
+        title: "Delete “" + b.name + "”?",
+        message: "It has " + pays.length + " linked payment(s) totalling " + Util.money(total) + ".\n\nKeep the payment as a normal expense (balances stay the same), or delete the payment too (" + Util.money(total) + " goes back to the account).",
+        altText: "Delete bill, keep payment as expense",
+        onAlt: function(){ cleanup(Store.bills.remove(id, true)); },
+        confirmText: "Delete bill and payment",
+        onConfirm: function(){ cleanup(Store.bills.remove(id, false)); }
+      });
+    }
+
+    function copyBillsFromPrevious(){
+      var prev = Util.addMonths(state.month, -1);
+      var src = Store.bills.list().filter(function(b){ return Util.monthOf(b.dueDate) === prev; });
+      src.forEach(function(b){
+        var day = Math.min(+b.dueDate.slice(8, 10), +Util.endOfMonth(state.month).slice(8, 10));
+        Store.bills.save({ id: Util.uid("bill_"), name: b.name, amount: b.amount, dueDate: state.month + "-" + Util.pad(day), category: b.category,
+          accountId: b.accountId, receiptId: null, note: b.note, createdAt: new Date().toISOString() });
+      });
+      toast(src.length + " bill(s) copied as unpaid");
+      render();
+    }
+
+    /* ---------- Account form ---------- */
+    function openAccountForm(id){
+      var a = id ? Store.accounts.get(id) : null;
+      var isEdit = !!a;
+      a = a ? JSON.parse(JSON.stringify(a)) : { id: Util.uid("acc_"), name: "", type: "bank", openingBalance: 0, includeInAvailable: true, archived: false, createdAt: new Date().toISOString() };
+      var usage = isEdit ? Store.accounts.usage(a.id) : { tx: 0, bills: 0 };
+      var current = isEdit ? Ledger.balance(a.id) : null;
+      openSheet(
+        '<div class="sheet-head"><h3>' + (isEdit ? "Edit account" : "Create account") + '</h3><button class="sheet-close" data-close aria-label="Close">✕</button></div>' +
+        '<form id="accForm" novalidate>' +
+          '<div class="field" data-field="name"><label for="aName">Account name</label><input id="aName" maxlength="60" placeholder="e.g. Main bank" value="' + Util.esc(a.name) + '"><div class="err"></div></div>' +
+          '<div class="frow wrap-xs">' +
+            '<div class="field"><label for="aType">Type</label><select id="aType">' + ACCOUNT_TYPES.map(function(t){ return '<option value="' + t.v + '"' + (t.v === a.type ? " selected" : "") + '>' + t.t + '</option>'; }).join("") + '</select></div>' +
+            '<div class="field" data-field="opening"><label for="aOpen">Opening balance</label><div class="amount-input"><span>RM</span><input id="aOpen" inputmode="decimal" placeholder="0.00" value="' + (a.openingBalance || "") + '"></div><div class="err"></div></div>' +
+          '</div>' +
+          (isEdit ? '<div class="info">Current balance: <b>' + Util.money(current) + '</b> (opening + ' + usage.tx + ' transaction(s)). It is always calculated, so it can’t be typed in.</div>' : '') +
+          '<label class="row-line" style="cursor:pointer;"><span class="label">Count in “available” money</span><input type="checkbox" id="aAvail"' + (a.includeInAvailable ? " checked" : "") + ' style="width:20px;height:20px;"></label>' +
+          '<p class="muted" style="margin:0 0 10px;">Turn off for savings or investments you don’t want to spend.</p>' +
+          (isEdit ? '<label class="row-line" style="cursor:pointer;"><span class="label">Archived (hidden from forms)</span><input type="checkbox" id="aArch"' + (a.archived ? " checked" : "") + ' style="width:20px;height:20px;"></label>' : '') +
+          '<div class="sheet-actions">' + (isEdit ? '<button type="button" class="btn del" id="aDelete">Delete</button>' : '') +
+            '<button type="button" class="btn secondary" data-cancel>Cancel</button><button type="submit" class="btn primary">' + (isEdit ? "Save" : "Create account") + '</button></div>' +
+        '</form>',
+        function(root){
+          root.querySelector("[data-cancel]").addEventListener("click", closeSheet);
+          var typeSel = $("aType");
+          if(!isEdit) typeSel.addEventListener("change", function(){ $("aAvail").checked = accountType(typeSel.value).available; });
+          if(isEdit) $("aDelete").addEventListener("click", function(){
+            if(usage.tx > 0){
+              confirmSheet({ title: "Can’t delete “" + a.name + "”", message: "It has " + usage.tx + " transaction(s), and deleting it would change your history.\n\nArchive it instead — it stays in your records but is hidden from forms.",
+                confirmText: "Archive account", danger: false,
+                onConfirm: function(){ var x = Store.accounts.get(a.id); x.archived = true; Store.accounts.save(x); toast("Account archived"); render(); } });
+              return;
+            }
+            confirmSheet({ title: "Delete “" + a.name + "”?", message: "The account will be removed." + (usage.bills ? " " + usage.bills + " bill(s) will no longer have a default account." : ""),
+              onConfirm: function(){ try{ Store.accounts.remove(a.id); toast("Account deleted"); render(); }catch(err){ toast(err.message, true); } } });
+          });
+          $("accForm").addEventListener("submit", function(e){
+            e.preventDefault();
+            var name = $("aName").value.trim();
+            var open = Util.parseSignedAmount($("aOpen").value);
+            var dup = Store.accounts.list(true).some(function(x){ return x.id !== a.id && x.name.trim().toLowerCase() === name.toLowerCase(); });
+            fieldErr(root, "name", !name ? "Give the account a name." : (dup ? "You already have an account with this name." : ""));
+            fieldErr(root, "opening", open === null ? "Enter a number like 500 or 500.00 (negative allowed for credit cards)." : "");
+            if(!name || dup || open === null){ toast("Please fix the highlighted fields.", true); return; }
+            Store.accounts.save({ id: a.id, name: name, type: typeSel.value, openingBalance: open, includeInAvailable: $("aAvail").checked,
+              archived: isEdit ? $("aArch").checked : false, createdAt: a.createdAt });
+            closeSheet(); toast(isEdit ? "Account updated" : "Account added"); render();
+          });
+        }
+      );
+    }
+
+    /* ---------- Export / backup ---------- */
+    function download(blob, name){
+      var url = URL.createObjectURL(blob), a = document.createElement("a");
+      a.href = url; a.download = name; document.body.appendChild(a); a.click();
+      setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 4000);
+    }
+    function exportXlsx(month){
+      Receipts.ids().catch(function(){ return []; }).then(function(ids){
+        try{
+          var have = {}; ids.forEach(function(i){ have[i] = true; });
+          var H = function(t){ return { v: t, s: 1 }; }, M = function(v){ return { v: Util.r2(v), s: 2 }; }, MB = function(v){ return { v: Util.r2(v), s: 3 }; }, B = function(t){ return { v: t, s: 4 }; };
+          var inScope = function(d){ return !month || Util.monthOf(d) === month; };
+          var txs = Store.transactions.list().filter(function(t){ return inScope(t.date); }).sort(function(a, b){ return a.date < b.date ? -1 : 1; });
+          var bills = Store.bills.list().filter(function(b){ return inScope(b.dueDate); }).sort(function(a, b){ return a.dueDate < b.dueDate ? -1 : 1; });
+          var sheets = [];
+          // Summary: one block per month in scope
+          var months = month ? [month] : Array.from(new Set(Store.transactions.list().map(function(t){ return Util.monthOf(t.date); })
+            .concat(Store.bills.list().map(function(b){ return Util.monthOf(b.dueDate); })))).sort();
+          var S = [[H("Month"), H("Income"), H("Expenses (actual)"), H("Bill payments"), H("Other spending"), H("Net cash flow"), H("Planned bills"), H("Still to pay"), H("Transfers"), H("Into savings"), H("Deposits"), H("Withdrawals"), H("Total balance (month end)"), H("Remaining available")]];
+          months.forEach(function(m){
+            var s = Ledger.monthSummary(m);
+            S.push([Util.monthLabel(m), M(s.income), M(s.expenses), M(s.billPayments), M(s.otherSpending), M(s.netFlow), M(s.planned), M(s.pending), M(s.transfers), M(s.toSavings), M(s.deposits), M(s.withdrawals), MB(s.totalBalance), MB(s.remainingAvailable)]);
+          });
+          S.push([]); S.push([B("Exported"), new Date().toLocaleString("en-MY")]);
+          S.push(["Transfers, deposits and withdrawals are not counted as income or expenses."]);
+          sheets.push({ name: "Monthly Summary", rows: S, widths: [16, 13, 16, 14, 14, 14, 14, 13, 12, 13, 12, 13, 22, 20], freezeHeader: true });
+
+          var I = [[H("Date"), H("Description"), H("Category"), H("Account"), H("Amount (RM)"), H("Receipt"), H("Note"), H("Transaction ID")]];
+          txs.filter(function(t){ return t.type === "income"; }).forEach(function(t){
+            I.push([t.date, t.description, t.category, accName(t.accountId), M(t.amount), t.receiptId && have[t.receiptId] ? "Yes (" + t.receiptId + ")" : "No", t.note, t.id]);
+          });
+          sheets.push({ name: "Income", rows: I, widths: [12, 28, 14, 18, 13, 30, 24, 30], freezeHeader: true });
+
+          var E = [[H("Due date"), H("Bill / planned expense"), H("Category"), H("Pay from"), H("Planned (RM)"), H("Paid (RM)"), H("Left (RM)"), H("Status"), H("Linked payment IDs"), H("Receipt"), H("Bill ID")]];
+          bills.forEach(function(b){
+            var st = Ledger.billStatus(b);
+            E.push([b.dueDate, b.name, b.category, b.accountId ? accName(b.accountId) : "", M(b.amount), M(st.paid), M(st.remaining),
+              st.status === "paid" ? (st.over > 0 ? "Paid (+" + Util.money(st.over) + " over)" : "Paid") : (st.overdue ? "Overdue" : (st.status === "partial" ? "Partly paid" : "Pending")),
+              st.payments.map(function(p){ return p.id + " (" + p.date + ", " + Util.money(p.amount) + ")"; }).join("; "),
+              b.receiptId && have[b.receiptId] ? "Yes (" + b.receiptId + ")" : "No", b.id]);
+          });
+          var X = [[H("Date"), H("Description"), H("Category"), H("Account"), H("Amount (RM)"), H("Linked bill"), H("Linked bill ID"), H("Receipt"), H("Note"), H("Transaction ID")]];
+          txs.filter(function(t){ return t.type === "expense"; }).forEach(function(t){
+            var b = t.billId ? Store.bills.get(t.billId) : null;
+            X.push([t.date, t.description, t.category, accName(t.accountId), M(t.amount), b ? b.name : "", t.billId || "", t.receiptId && have[t.receiptId] ? "Yes (" + t.receiptId + ")" : "No", t.note, t.id]);
+          });
+          sheets.push({ name: "Expenses (actual)", rows: X, widths: [12, 28, 16, 18, 13, 22, 30, 30, 24, 30], freezeHeader: true });
+          sheets.push({ name: "Bills (planned)", rows: E, widths: [12, 28, 16, 18, 13, 12, 12, 22, 50, 30, 30], freezeHeader: true });
+
+          var MV = [[H("Date"), H("Type"), H("Description"), H("From / account"), H("To account"), H("Amount (RM)"), H("Receipt"), H("Note"), H("Transaction ID")]];
+          txs.filter(function(t){ return t.type === "transfer" || t.type === "deposit" || t.type === "withdrawal"; }).forEach(function(t){
+            MV.push([t.date, TX_TYPES[t.type].t, t.description, accName(t.accountId), t.toAccountId ? accName(t.toAccountId) : "", M(t.amount), t.receiptId && have[t.receiptId] ? "Yes (" + t.receiptId + ")" : "No", t.note, t.id]);
+          });
+          sheets.push({ name: "Account Movements", rows: MV, widths: [12, 12, 26, 18, 18, 13, 30, 24, 30], freezeHeader: true });
+
+          var endDate = month ? Util.endOfMonth(month) : null;
+          var A = [[H("Account"), H("Type"), H("Opening (RM)"), H(endDate ? "Balance at " + endDate : "Current balance"), H("In available?"), H("Archived"), H("Account ID")]];
+          Store.accounts.list(true).forEach(function(a){
+            A.push([a.name, accountType(a.type).t, M(a.openingBalance), MB(Ledger.balance(a.id, endDate)), a.includeInAvailable ? "Yes" : "No", a.archived ? "Yes" : "No", a.id]);
+          });
+          sheets.push({ name: "Accounts", rows: A, widths: [22, 14, 14, 22, 13, 10, 30], freezeHeader: true });
+
+          download(Xlsx.build(sheets), "Money_Tracker_" + activeSlug() + "_" + (month || "all_records_" + Util.todayISO()) + ".xlsx");
+          toast("Excel downloaded");
+        }catch(err){ console.error(err); toast("Export failed: " + err.message, true); }
+      });
+    }
+    // Backup = this profile's info + its financial data (receipts not included)
+    function backup(){
+      var p = Profiles.active();
+      var payload = { app: "money-tracker-public", format: "profile-backup", version: 3, ownerId: p.id, exportedAt: new Date().toISOString(),
+                      profile: { name: p.name, avatar: p.avatar }, data: Store.snapshot() };
+      download(new Blob([JSON.stringify(payload, null, 1)], { type: "application/json" }), "money-tracker-backup_" + activeSlug() + "_" + Util.todayISO() + ".json");
+      toast("Backup downloaded");
+    }
+    function restore(file){
+      if(!file) return;
+      var fr = new FileReader();
+      fr.onload = function(){
+        var d;
+        try{ d = JSON.parse(fr.result); }catch(e){ toast("That file isn’t a valid backup.", true); return; }
+        var data = (d && d.format === "profile-backup") ? d.data : d;   // older backups had the data at top level
+        if(!data || !Array.isArray(data.accounts) || !Array.isArray(data.transactions)){ toast("That file isn’t a Money Tracker backup.", true); return; }
+        var p = Profiles.active();
+        var backupOwner = (d && typeof d.ownerId === "string") ? d.ownerId : ((data && typeof data.ownerId === "string") ? data.ownerId : null);
+        if(backupOwner && backupOwner !== p.id){
+          toast("This backup belongs to a different profile. You can only restore your own data.", true);
+          return;
+        }
+        var from = !backupOwner ? "This backup isn’t linked to any profile. Restoring it assigns these records to you." : null;
+        confirmSheet({
+          title: "Restore into “" + p.name + "”?",
+          message: "This replaces ALL of " + p.name + "’s accounts, transactions and bills with the backup (" + data.accounts.length + " accounts, " +
+            data.transactions.length + " transactions, " + (data.bills || []).length + " bills)." + (from ? "\n\n" + from : "") +
+            "\n\nOnly your profile changes. Your name and photo stay as they are.\n\nTip: download a backup first.",
+          confirmText: "Replace this profile’s data",
+          onConfirm: function(){ Store.replaceAll(data); toast("Backup restored into " + p.name); render(); }
+        });
+      };
+      fr.readAsText(file);
+    }
+
+    /* ---------- Demo data (optional; generic names) ---------- */
+    function loadDemo(){
+      function go(){
+        var m = Util.currentMonth(), p = Util.addMonths(m, -1);
+        var acc = {
+          bank: { id: Util.uid("acc_"), name: "Main Bank", type: "bank", openingBalance: 2500, includeInAvailable: true, archived: false, createdAt: new Date().toISOString() },
+          bills: { id: Util.uid("acc_"), name: "Bills Account", type: "bank", openingBalance: 300, includeInAvailable: true, archived: false, createdAt: new Date().toISOString() },
+          wallet: { id: Util.uid("acc_"), name: "E-Wallet", type: "ewallet", openingBalance: 80, includeInAvailable: true, archived: false, createdAt: new Date().toISOString() },
+          save: { id: Util.uid("acc_"), name: "Emergency Savings", type: "savings", openingBalance: 1500, includeInAvailable: false, archived: false, createdAt: new Date().toISOString() }
+        };
+        var d = { accounts: Object.keys(acc).map(function(k){ return acc[k]; }), transactions: [], bills: [], settings: Store.settings() }; // keeps the profile
+        function bill(name, amt, month, day, cat, a){ var b = { id: Util.uid("bill_"), name: name, amount: amt, dueDate: month + "-" + Util.pad(day), category: cat, accountId: a, receiptId: null, note: "" }; d.bills.push(b); return b; }
+        function tx(type, amt, month, day, a, extra){ var t = Object.assign({ id: Util.uid("tx_"), type: type, amount: amt, date: month + "-" + Util.pad(day), accountId: a, toAccountId: null, description: "", category: "", billId: null, receiptId: null, note: "", createdAt: new Date().toISOString() }, extra || {}); d.transactions.push(t); return t; }
+        [p, m].forEach(function(mm, i){
+          tx("income", 4200, mm, 1, acc.bank.id, { description: "Salary", category: "Salary" });
+          tx("transfer", 900, mm, 2, acc.bank.id, { toAccountId: acc.bills.id, description: "Money for bills" });
+          tx("transfer", 300, mm, 2, acc.bank.id, { toAccountId: acc.save.id, description: "Monthly saving" });
+          var rent = bill("Rent", 750, mm, 5, "Housing", acc.bills.id);
+          var net = bill("Internet", 129, mm, 12, "Phone & Internet", acc.bills.id);
+          var phone = bill("Phone plan", 40, mm, 15, "Phone & Internet", acc.bills.id);
+          bill("Car insurance", 210, mm, 25, "Insurance", acc.bank.id);
+          tx("expense", 750, mm, 5, acc.bills.id, { description: "Rent", category: "Housing", billId: rent.id });
+          tx("expense", 40, mm, 6, acc.bills.id, { description: "Phone plan", category: "Phone & Internet", billId: phone.id });
+          if(i === 0) tx("expense", 129, mm, 12, acc.bills.id, { description: "Internet", category: "Phone & Internet", billId: net.id });
+          tx("withdrawal", 100, mm, 8, acc.bank.id, { description: "ATM cash" });
+          tx("transfer", 50, mm, 9, acc.bank.id, { toAccountId: acc.wallet.id, description: "Top up e-wallet" });
+          tx("expense", 186.4, mm, 10, acc.bank.id, { description: "Groceries", category: "Food & Groceries" });
+          tx("expense", 32.5, mm, 11, acc.wallet.id, { description: "Toll & parking", category: "Transport" });
+        });
+        Store.replaceAll(d);
+        state.month = m;
+        toast("Demo data loaded");
+        setView("dashboard");
+      }
+      if(Store.accounts.list(true).length){
+        confirmSheet({ title: "Replace with demo data?", message: "Your current records will be replaced by demo data. Download a backup first if you want to keep them.", confirmText: "Load demo", onConfirm: go });
+      } else go();
+    }
+    /* ---------- Bill checkbox: tick = record payment, untick = reverse ----------
+       The bill itself never moves money. Ticking creates ONE expense transaction
+       (linked by billId) for the amount still owed, from the bill's account.
+       Before writing, the status is re-read, so repeated taps can't create a
+       second payment. Unticking deletes the linked payment(s) after confirmation. */
+    var billBusy = {};
+    function toggleBill(id){
+      var b = Store.bills.get(id);
+      if(!b || billBusy[id]) return;
+      var st = Ledger.billStatus(b);
+      if(st.status === "pending"){ payBillNow(b); return; }
+      if(st.status === "partial"){
+        confirmSheet({
+          title: "“" + b.name + "” is partly paid",
+          message: Util.money(st.paid) + " of " + Util.money(b.amount) + " has been paid. What would you like to do?",
+          confirmText: "Pay remaining " + Util.money(st.remaining), danger: false,
+          onConfirm: function(){ payBillNow(b); },
+          altText: "Undo the " + Util.money(st.paid) + " paid",
+          onAlt: function(){ reverseBillPayments(b); }
+        });
+        return;
+      }
+      reverseBillPayments(b);
+    }
+    function payBillNow(b){
+      var acc = b.accountId ? Store.accounts.get(b.accountId) : null;
+      if(!acc || acc.archived){
+        toast("Choose which account paid this bill.");
+        payBill(b.id); // opens the payment form with everything else prefilled
+        return;
+      }
+      billBusy[b.id] = true;
+      try{
+        var fresh = Ledger.billStatus(Store.bills.get(b.id) || b);
+        if(fresh.remaining <= 0) return;           // already paid — never add a duplicate
+        Store.transactions.save({
+          id: Util.uid("tx_"), type: "expense", amount: fresh.remaining, date: Util.todayISO(),
+          accountId: acc.id, toAccountId: null, description: b.name, category: b.category,
+          billId: b.id, receiptId: null, note: "", createdAt: new Date().toISOString()
+        });
+        toast("Paid " + Util.money(fresh.remaining) + " from " + acc.name);
+      } finally {
+        billBusy[b.id] = false;
+        render();
+      }
+    }
+    function reverseBillPayments(b){
+      var pays = Store.transactions.forBill(b.id);
+      if(!pays.length){ render(); return; }
+      var total = pays.reduce(function(s, t){ return s + t.amount; }, 0);
+      var withReceipts = pays.filter(function(t){ return t.receiptId; }).length;
+      confirmSheet({
+        title: "Mark “" + b.name + "” as unpaid?",
+        message: (pays.length === 1
+            ? "The payment of " + Util.money(total) + " from " + accName(pays[0].accountId) + " (" + Util.fmtDate(pays[0].date) + ") will be removed"
+            : pays.length + " linked payments totalling " + Util.money(total) + " will be removed") +
+          " and the money goes back to the account balance. The bill stays reserved." +
+          (withReceipts ? "\n\n" + withReceipts + " attached receipt image(s) will also be deleted." : ""),
+        confirmText: "Mark as unpaid",
+        onConfirm: function(){
+          billBusy[b.id] = true;
+          try{
+            Store.transactions.forBill(b.id).forEach(function(t){
+              Store.transactions.remove(t.id);
+              if(t.receiptId) Receipts.remove(t.receiptId).catch(function(){});
+            });
+            toast("“" + b.name + "” marked as unpaid");
+          } finally { billBusy[b.id] = false; render(); }
+        }
+      });
+    }
+
+    /* ---------- Local profiles (UI) — LOCAL PROTOTYPE MODE ----------
+       Sign-in here only selects a namespace in THIS browser. It is not
+       authentication: there are no passwords, nothing is verified by a server,
+       and anyone with access to this browser profile can open any local profile
+       by name or read localStorage directly. Real accounts need the backend
+       described in supabase_schema.sql (Supabase Auth + Row Level Security).
+       Session rules kept here: no list of other profiles while signed in, sign
+       out wipes the active user's data from memory and the screen, and every
+       read/write/export/restore/receipt call goes through the active profile. */
+    function initials(name){
+      return String(name || "").split(/\s+/).filter(Boolean).slice(0, 2).map(function(w){ return w.charAt(0).toUpperCase(); }).join("") || "?";
+    }
+    function avatarHtml(p, cls){
+      return p.avatar ? '<img class="' + cls + '" src="' + p.avatar + '" alt="">'
+                      : '<span class="' + cls + ' initials">' + Util.esc(initials(p.name)) + '</span>';
+    }
+    function slug(name){
+      var s = String(name || "").normalize ? String(name).normalize("NFKD").replace(/[̀-ͯ]/g, "") : String(name || "");
+      s = s.replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 30);
+      return s || "Profile";
+    }
+    function activeSlug(){ var p = Profiles.active(); return slug(p ? p.name : ""); }
+    var LOCAL_NOTICE = "Local prototype: profiles keep data separate in this browser, but they are not secure. There are no passwords, and anyone using this browser can open a profile by name.";
+
+    function renderHeaderProfile(){
+      var btn = $("headerAvatar"), p = Profiles.active();
+      $("brandName").textContent = p ? p.name : "Money Tracker";
+      document.body.classList.toggle("no-profile", !p);
+      if(p){
+        btn.innerHTML = avatarHtml(p, "hdr-av"); btn.classList.add("has-profile");
+        btn.setAttribute("data-act", "account-menu");
+        btn.setAttribute("aria-label", "Signed in as " + p.name + ". Profile menu");
+      } else {
+        btn.innerHTML = Icons.svg("user"); btn.classList.remove("has-profile");
+        $("viewSubtitle").textContent = "Sign in";
+        btn.setAttribute("data-act", "none");
+        btn.setAttribute("aria-label", "Not signed in");
+      }
+    }
+
+    function legacyOffer(){
+      // earlier (pre-profile) data: offered once, only as an explicit opt-in
+      if(Profiles.legacyMigratedTo()) return null;
+      return Store.legacy();
+    }
+    // Shown whenever nobody is signed in. Lists NO profile names.
+    function signInHtml(){
+      var hasProfiles = Profiles.list().length > 0;
+      var legacy = legacyOffer();
+      return '<div class="signin">' +
+        '<div class="signin-logo">' + Icons.svg("wallet", 28) + '</div>' +
+        '<h1>Money Tracker</h1>' +
+        '<p class="muted" style="margin:0 0 16px;">Sign in to your local profile on this device.</p>' +
+        (hasProfiles ?
+          '<form class="card" id="signInForm" novalidate>' +
+            '<div class="field" data-field="signin"><label for="siName">Profile name</label>' +
+              '<input id="siName" autocomplete="username" maxlength="40" placeholder="Your profile name"><div class="err"></div></div>' +
+            '<button type="submit" class="btn primary" style="width:100%;">Sign in</button>' +
+          '</form>' : '') +
+        '<button class="btn ' + (hasProfiles ? "secondary" : "primary") + '" style="width:100%;" data-act="create-profile">' + Icons.svg("plus") + 'Create local profile</button>' +
+        (legacy ? '<div class="info" style="margin-top:12px;">This browser also has Money Tracker data from before profiles (' + legacy.counts + '). It isn’t assigned to anyone. You can choose to import it when you create a profile, or later from More.</div>' : '') +
+        '<div class="warn" style="margin-top:12px;">' + Icons.svg("alert") + '<span>' + LOCAL_NOTICE + ' Real sign-in needs the Supabase backend.</span></div>' +
+      '</div>';
+    }
+
+    function profileSection(){
+      var p = Profiles.active();
+      return '<div class="card"><h2>Profile</h2>' +
+        '<div class="profile-card flat">' + avatarHtml(p, "av-lg") +
+          '<div class="pc-text"><b>' + Util.esc(p.name) + '</b><small>Signed in · local profile</small></div>' +
+          '<button class="btn small secondary" data-act="edit-profile">' + Icons.svg("pencil") + 'Edit Profile</button></div>' +
+        '<button class="btn secondary" style="width:100%;margin-top:8px;" data-act="sign-out">Sign out</button>' +
+        '<p class="muted" style="margin:10px 0 0;font-size:12.5px;">' + LOCAL_NOTICE + '</p>' +
+      '</div>';
+    }
+
+    function openAccountMenu(){
+      var p = Profiles.active(); if(!p) return;
+      openSheet(
+        '<div class="sheet-head"><h3>Profile</h3><button class="sheet-close" data-close aria-label="Close">✕</button></div>' +
+        '<div class="profile-card flat">' + avatarHtml(p, "av-lg") + '<div class="pc-text"><b>' + Util.esc(p.name) + '</b><small>Signed in · local profile</small></div></div>' +
+        '<div class="btn-row" style="margin-top:12px;"><button class="btn secondary" data-act="edit-profile">' + Icons.svg("pencil") + 'Edit Profile</button>' +
+        '<button class="btn primary" data-act="sign-out">Sign out</button></div>'
+      );
+    }
+
+    function activateProfile(id, msg){
+      if($("overlay").classList.contains("show")) closeSheet();
+      Profiles.setActive(id);
+      var r = Store.useProfile(id);
+      Receipts.useNamespace(id);
+      state.month = Util.currentMonth(); state.txFilter = "all";
+      if(!r.ok) toast(r.error, true); else if(msg) toast(msg);
+      setView(Store.accounts.list(true).length ? "dashboard" : "accounts");
+    }
+    // Sign out: forget the session and wipe the user's data from memory and screen
+    function signOut(msg){
+      if($("overlay").classList.contains("show")) closeSheet();
+      Profiles.signOut();
+      Store.useProfile(null);          // in-memory financial data replaced by an empty set
+      Receipts.useNamespace(null);     // receipt database connection closed
+      document.querySelectorAll(".view").forEach(function(v){ v.innerHTML = ""; });
+      state.month = Util.currentMonth(); state.txFilter = "all";
+      toast(msg || "Signed out");
+      setView("dashboard");
+    }
+    function signIn(root){
+      var input = $("siName"), name = input.value.trim();
+      var p = name ? Profiles.findByName(name) : null;
+      fieldErr(root, "signin", !name ? "Enter your profile name." : (p ? "" : "No local profile with that name in this browser."));
+      if(!p) return;
+      activateProfile(p.id, "Signed in as " + p.name);
+    }
+
+    // square-crop + shrink to 160px JPEG so it fits comfortably in localStorage
+    function resizeAvatar(file){
+      return new Promise(function(res, rej){
+        var url = URL.createObjectURL(file), img = new Image();
+        img.onload = function(){
+          try{
+            var side = Math.min(img.naturalWidth, img.naturalHeight), c = document.createElement("canvas");
+            c.width = c.height = 160;
+            var ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 160, 160);
+            ctx.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, 160, 160);
+            URL.revokeObjectURL(url);
+            res(c.toDataURL("image/jpeg", 0.85));
+          }catch(e){ URL.revokeObjectURL(url); rej(e); }
+        };
+        img.onerror = function(){ URL.revokeObjectURL(url); rej(new Error("This image format can’t be read. Try a JPG or PNG.")); };
+        img.src = url;
+      });
+    }
+
+    // mode "create" (only while signed out) or "edit" (own profile only)
+    function openProfileForm(mode){
+      var isEdit = mode === "edit";
+      if(isEdit && !Profiles.active()) return;
+      if(!isEdit && Profiles.active()) return;   // no creating other users while signed in
+      var existing = isEdit ? Profiles.active() : null;
+      var legacy = isEdit ? null : legacyOffer();
+      var draft = { avatar: existing ? existing.avatar : null };
+      openSheet(
+        '<div class="sheet-head"><h3>' + (isEdit ? "Edit Profile" : "Create local profile") + '</h3><button class="sheet-close" data-close aria-label="Close">✕</button></div>' +
+        '<form id="profileForm" novalidate>' +
+          '<div class="avatar-edit"><span id="pAvatar"></span>' +
+            '<div class="btn-row" style="flex:1;"><label class="pick">' + Icons.svg("camera") + 'Choose photo<input type="file" accept="image/*" id="pPhoto" aria-label="Choose profile photo"></label>' +
+            '<button type="button" class="link-btn red" id="pRemovePhoto">Remove photo</button></div></div>' +
+          '<div class="field" data-field="name"><label for="pName">Display name</label><input id="pName" maxlength="40" autocomplete="nickname" placeholder="e.g. Aisyah" value="' + Util.esc(existing ? existing.name : "") + '"><div class="err"></div></div>' +
+          (legacy ? '<label class="check-row"><input type="checkbox" id="pMigrate"><span><b>Import earlier data into this profile</b><small>' + legacy.counts +
+            ' saved in this browser before profiles. Only tick this if the data is yours. A copy is made; the original stays.</small></span></label>' : '') +
+          (isEdit ? '' : '<div class="info">' + LOCAL_NOTICE + '</div>') +
+          '<div class="sheet-actions">' + (isEdit ? '<button type="button" class="btn del" id="pDelete">Delete</button>' : '') +
+            '<button type="button" class="btn secondary" data-cancel>Cancel</button><button type="submit" class="btn primary">Save Profile</button></div>' +
+        '</form>',
+        function(root){
+          function drawAvatar(){
+            $("pAvatar").innerHTML = avatarHtml({ name: $("pName").value.trim() || "?", avatar: draft.avatar }, "av-lg");
+            $("pRemovePhoto").style.display = draft.avatar ? "" : "none";
+          }
+          drawAvatar();
+          $("pName").addEventListener("input", drawAvatar);
+          root.querySelector("[data-cancel]").addEventListener("click", closeSheet);
+          $("pPhoto").addEventListener("change", function(e){
+            var f = e.target.files && e.target.files[0];
+            var err = Receipts.validate(f);
+            if(err){ toast(err, true); return; }
+            resizeAvatar(f).then(function(d){ draft.avatar = d; drawAvatar(); }).catch(function(er){ toast(er.message, true); });
+          });
+          $("pRemovePhoto").addEventListener("click", function(){ draft.avatar = null; drawAvatar(); });
+          if(isEdit) $("pDelete").addEventListener("click", function(){
+            confirmSheet({
+              title: "Delete your profile “" + existing.name + "”?",
+              message: "This permanently deletes your profile and all of its accounts, transactions, bills and receipt images from this browser, then signs you out.\n\nDownload a backup first if you might need this data.",
+              confirmText: "Delete profile",
+              onConfirm: function(){ deleteOwnProfile(existing.id); }
+            });
+          });
+          $("profileForm").addEventListener("submit", function(e){
+            e.preventDefault();
+            var name = $("pName").value.trim();
+            var err = !name ? "Enter a display name." : (Profiles.nameTaken(name, existing && existing.id) ? "That name is already used by a profile in this browser." : "");
+            fieldErr(root, "name", err);
+            if(err){ toast("Please fix the highlighted field.", true); return; }
+            try{
+              if(isEdit){
+                Profiles.update(existing.id, { name: name, avatar: draft.avatar });
+                closeSheet(); toast("Profile saved"); render();
+                return;
+              }
+              var p = Profiles.create(name, draft.avatar);
+              var migrate = legacy && $("pMigrate") && $("pMigrate").checked;   // explicit opt-in only
+              if(migrate){
+                Store.writeFor(p.id, legacy.data);     // copy, stamped with the new owner; original untouched
+                Profiles.markLegacyMigrated(p.id);
+                Receipts.copyLegacyInto(p.id).then(function(n){ if(n) toast(n + " receipt image(s) imported"); })
+                  .catch(function(){ toast("Receipt images couldn’t be imported; your records were.", true); });
+              }
+              activateProfile(p.id, migrate ? "Profile saved — earlier data imported" : "Profile saved — now create your accounts");
+            }catch(er){ /* storage error already shown */ }
+          });
+        }
+      );
+    }
+
+    // Only the signed-in user can delete their own profile; afterwards nobody is signed in.
+    function deleteOwnProfile(id){
+      var p = Profiles.active();
+      if(!p || p.id !== id) return;
+      Store.dropProfile(id);
+      Receipts.deleteNamespace(id);
+      Profiles.remove(id);
+      signOut("Profile deleted");
+    }
+
+    function importLegacy(){
+      var legacy = legacyOffer(), p = Profiles.active();
+      if(!legacy || !p) return;
+      confirmSheet({
+        title: "Import earlier data into “" + p.name + "”?",
+        message: "This browser has data from before profiles (" + legacy.counts + ") that isn’t assigned to anyone. Only import it if it’s yours.\n\nIt replaces " + p.name + "’s current accounts, transactions and bills. The original copy is kept.",
+        confirmText: "Import into my profile", danger: false,
+        onConfirm: function(){
+          Store.replaceAll(legacy.data);
+          Profiles.markLegacyMigrated(p.id);
+          Receipts.copyLegacyInto(p.id).catch(function(){});
+          toast("Earlier data imported"); render();
+        }
+      });
+    }
+
+    function resetAll(){
+      var p = Profiles.active();
+      confirmSheet({ title: "Delete " + p.name + "’s data?", message: "All accounts, transactions, bills and receipt images in your profile will be permanently deleted. Your profile itself is kept. This can’t be undone.",
+        confirmText: "Delete data",
+        onConfirm: function(){ Store.clear(); Receipts.clear().catch(function(){}); toast("Profile data deleted"); setView("dashboard"); } });
+    }
+
+    /* ---------- event delegation ---------- */
+    function onClick(e){
+      var g = e.target.closest("[data-goto]");
+      if(g){ if($("overlay").classList.contains("show")) closeSheet(); setView(g.getAttribute("data-goto")); return; }
+      var f = e.target.closest("[data-filter]");
+      if(f){ state.txFilter = f.getAttribute("data-filter"); render(); return; }
+      var el = e.target.closest("[data-act]");
+      if(!el) return;
+      var id = el.getAttribute("data-id"), act = el.getAttribute("data-act");
+      var inSheet = !!el.closest("#sheet");
+      var actions = {
+        "add-tx": function(){ openTxForm(); },
+        "add-transfer": function(){ openTxForm(null, { type: "transfer" }); },
+        "edit-tx": function(){ openTxForm(id); },
+        "del-tx": function(){ deleteTx(id); },
+        "add-bill": function(){ openBillForm(); },
+        "edit-bill": function(){ openBillForm(id); },
+        "open-bill": function(){ openBillForm(id); },
+        "pay-bill": function(){ payBill(id); },
+        "toggle-bill": function(){ toggleBill(id); },
+        "edit-profile": function(){ openProfileForm("edit"); },
+        "create-profile": function(){ openProfileForm("create"); },
+        "account-menu": openAccountMenu,
+        "sign-out": function(){ signOut(); },
+        "import-legacy": importLegacy,
+        "del-bill": function(){ deleteBill(id); },
+        "copy-bills": copyBillsFromPrevious,
+        "add-account": function(){ openAccountForm(); },
+        "edit-account": function(){ openAccountForm(id); },
+        "export-month": function(){ exportXlsx(state.month); },
+        "export-all": function(){ exportXlsx(null); },
+        "backup": backup,
+        "demo": loadDemo,
+        "reset": resetAll
+      };
+      if(actions[act]){
+        if(inSheet && /^(edit-tx|del-tx|pay-bill|del-bill|toggle-bill)$/.test(act)) closeSheet();
+        actions[act]();
+      }
+    }
+
+    function init(){
+      Profiles.load();
+      var ap = Profiles.active();                 // last selected profile is restored
+      var res = Store.useProfile(ap ? ap.id : null);
+      Receipts.useNamespace(ap ? ap.id : null);
+      if(!res.ok) setTimeout(function(){ toast(res.error, true); }, 300);
+      document.addEventListener("click", onClick);
+      document.addEventListener("submit", function(e){ if(e.target.id === "signInForm"){ e.preventDefault(); signIn(e.target); } });
+      document.addEventListener("change", function(e){ if(e.target.id === "restoreInput"){ restore(e.target.files[0]); e.target.value = ""; } });
+      document.querySelectorAll(".nav-btn[data-view]").forEach(function(b){ b.addEventListener("click", function(){ setView(b.getAttribute("data-view")); }); });
+      $("navAdd").addEventListener("click", function(){ openTxForm(); });
+      $("prevMonth").addEventListener("click", function(){ setMonth(Util.addMonths(state.month, -1)); });
+      $("nextMonth").addEventListener("click", function(){ setMonth(Util.addMonths(state.month, 1)); });
+      $("monthLabel").addEventListener("click", function(){ setMonth(Util.currentMonth()); });
+      $("overlay").addEventListener("click", function(e){ if(e.target === $("overlay")) closeSheet(); });
+      document.addEventListener("keydown", function(e){ if(e.key === "Escape" && $("overlay").classList.contains("show")) closeSheet(); });
+      // "More" lives behind the settings tools (keeps 5-slot nav); also reachable from Accounts
+      setView("dashboard");
+    }
+
+    return { init: init, toast: toast, setView: setView, state: state };
+  })();
+
+  // exposed for automated tests only
+  window.__mt = { Store: Store, Ledger: Ledger, Util: Util, UI: UI, Receipts: Receipts, Profiles: Profiles };
+  document.addEventListener("DOMContentLoaded", UI.init);
+})();
+</script>
+</body>
+</html>
