@@ -1,0 +1,20 @@
+{
+  "name": "money-tracker",
+  "version": "4.0.0",
+  "private": true,
+  "description": "Personal Money Tracker with private user accounts (Node.js + SQLite).",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js",
+    "backup": "node scripts/backup.js",
+    "reset-password": "node scripts/reset-password.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.10.0",
+    "express": "^4.21.2"
+  }
+}

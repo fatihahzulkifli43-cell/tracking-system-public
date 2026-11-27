@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+<title>Money Tracker</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body class="booting">
+
+<!-- LOGIN / REGISTER (shown when not logged in) -->
+<div class="auth-screen" id="authScreen" hidden>
+  <div class="auth-card">
+    <div class="auth-brand">💸 Money Tracker</div>
+    <p class="auth-tag">Akaun peribadi — data anda hanya boleh dilihat oleh anda.</p>
+    <div class="auth-tabs" role="tablist">
+      <button type="button" class="auth-tab active" id="authTabLogin">Log masuk</button>
+      <button type="button" class="auth-tab" id="authTabRegister">Daftar</button>
+    </div>
+    <form id="authForm" class="auth-form" autocomplete="on">
+      <label class="auth-label" for="authUsername">Nama pengguna</label>
+      <input class="auth-input" id="authUsername" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required maxlength="32">
+      <label class="auth-label" for="authPassword">Kata laluan</label>
+      <input class="auth-input" id="authPassword" name="password" type="password" autocomplete="current-password" required maxlength="200">
+      <div id="authConfirmWrap" hidden>
+        <label class="auth-label" for="authConfirm">Ulang kata laluan</label>
+        <input class="auth-input" id="authConfirm" type="password" autocomplete="new-password" maxlength="200">
+      </div>
+      <p class="auth-hint" id="authHint" hidden>Nama pengguna 3–32 aksara (huruf, nombor, . _ -). Kata laluan sekurang-kurangnya 10 aksara.</p>
+      <p class="auth-error" id="authError" role="alert"></p>
+      <button class="auth-submit" id="authSubmit" type="submit">Log masuk</button>
+    </form>
+  </div>
+</div>
+
+
+<div class="app">
+
+  <header class="top">
+    <div class="top-left">
+      <h1>💸 Money Tracker</h1>
+      <div class="subtitle" id="monthSubtitle">November 2026</div>
+    </div>
+    <div class="top-right">
+      <button class="profile-btn" id="accountBtn" type="button" aria-haspopup="dialog">
+        <span class="profile-avatar" id="accountAvatar">?</span>
+        <span class="profile-btn-name" id="accountName"></span>
+        <span class="profile-btn-chev" aria-hidden="true">▾</span>
+      </button>
+      <div class="save-indicator" id="saveIndicator">✓ Saved</div>
+    </div>
+  </header>
+
+  <!-- shown only if data can't be opened (nothing is overwritten) -->
+  <div class="card load-error-card" id="loadErrorPanel" hidden>
+    <h2>⚠️ Data tak dapat dibuka</h2>
+    <p class="hint" id="loadErrorMsg"></p>
+    <p class="hint">Tiada data dipadam atau ditulis ganti.</p>
+    <div class="reset-row">
+      <button class="reset-btn month" id="loadErrorDownload" type="button" hidden>⬇️ Download data (.json)</button>
+      <button class="reset-btn all" id="loadErrorRetry" type="button">🔄 Cuba lagi</button>
+      <button class="reset-btn month" id="loadErrorLogout" type="button">🚪 Log keluar</button>
+    </div>
+  </div>
+
+  <!-- save problem: conflict with another tab, or session expired -->
+  <div class="sync-banner" id="syncBanner" hidden role="alert">
+    <div id="syncBannerMsg"></div>
+    <button type="button" id="syncBannerReload">🔄 Muat semula</button>
+  </div>
+
+  <!-- old browser data found → offer import -->
+  <div class="import-banner" id="importBanner" hidden>
+    <div><b>Data lama dijumpai dalam browser ini.</b> Import ke akaun anda supaya ia disimpan dengan selamat di pelayan.</div>
+    <div class="import-banner-actions">
+      <button type="button" id="importBannerOpen">📥 Import</button>
+      <button type="button" id="importBannerDismiss" class="ghost">Nanti</button>
+    </div>
+  </div>
+
+  <!-- MONTH TABS -->
+  <div class="month-tabs" id="monthTabs"></div>
+
+
+  <!-- MONTHLY SUMMARY -->
+  <div class="summary-card">
+    <h2 id="summaryTitle">November 2026</h2>
+    <div class="summary-grid">
+      <div class="summary-item">
+        <div class="label">💰 Income</div>
+        <div class="value" id="sumIncome">RM0.00</div>
+      </div>
+      <div class="summary-item">
+        <div class="label">🧾 Commitments Reserved (Unpaid)</div>
+        <div class="value" id="sumExpenses">RM0.00</div>
+      </div>
+      <div class="summary-item wide">
+        <div class="label">🏦 Need in RHB (Still)</div>
+        <div class="value" id="sumRhb">RM0.00</div>
+      </div>
+      <div class="summary-item wide" id="sumMaybankWrap">
+        <div class="label">💳 Perbelanjaan Lain-lain</div>
+        <div class="value" id="sumMaybank">RM0.00</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INCOME -->
+  <div class="card">
+    <h2>💰 Income</h2>
+    <div class="money-input-wrap">
+      <span class="prefix">RM</span>
+      <input type="number" inputmode="decimal" step="0.01" min="0" id="incomeInput" placeholder="0.00">
+    </div>
+  </div>
+
+  <!-- EXPENSES -->
+  <div class="card">
+    <h2>🧾 Commitments</h2>
+    <div id="expenseList"></div>
+    <div class="empty-state" id="emptyExpenses" style="display:none;">No commitments yet.</div>
+    <button class="add-expense-btn" id="addExpenseBtn">+ Add Commitment</button>
+    <div class="expense-total-row">
+      <div class="label">Total Commitments</div>
+      <div class="value" id="expenseTotal">RM0.00</div>
+    </div>
+    <div class="expense-paid-note" id="expensePaidNote"></div>
+    <div class="reserve-banner" id="reserveBanner">🔴 Need RM0.00 in RHB for Reserved Commitments</div>
+  </div>
+
+  <!-- RHB -->
+  <div class="card rhb">
+    <h2>🏦 RHB</h2>
+
+    <div class="row-line">
+      <div class="label">Commitments Reserved (Still Needed)</div>
+      <div class="value" id="rhbExpensesReserved">RM0.00</div>
+    </div>
+
+    <div class="row-line total">
+      <div class="label">Total Needed in RHB (Still)</div>
+      <div class="value" id="rhbTotal">RM0.00</div>
+    </div>
+
+    <div class="maybank-divider"></div>
+
+    <h2 style="margin-top:18px;">🔀 Pergerakan RHB</h2>
+  
+
+    <div id="rhbWithdrawalList"></div>
+    <div class="empty-state" id="emptyRhbWithdrawals" style="display:none;">Belum ada pergerakan.</div>
+    <button class="add-expense-btn" id="addRhbWithdrawalBtn">+ Catat Pergerakan RHB</button>
+    <button class="add-expense-btn" id="autoLinkBtn" style="margin-top:8px; border-style:solid; background:var(--blue-soft); color:var(--blue);">🔗 Auto-link ikut nama</button>
+
+    <div class="row-line total">
+      <div class="label">Jumlah Bersih Diambil dari RHB</div>
+      <div class="value" id="rhbWithdrawnTotal">RM0.00</div>
+    </div>
+
+    <div class="row-line total">
+      <div class="label">🧾 Baki RHB Sepatutnya (Commitments Reserved Tinggal)</div>
+      <div class="value" id="rhbComputedBalance">RM0.00</div>
+    </div>
+
+    <div class="shortfall-banner" id="rhbExpensesOverBanner" style="display:none;">
+      <div class="big" id="rhbExpensesOverAmount">⚠️ Commitments Reserved lebih guna RM0.00</div>
+      <div class="small">Bayaran melebihi jumlah yang direserve.</div>
+    </div>
+
+    <div class="maybank-divider" style="margin-top:18px;"></div>
+
+    <h2 style="margin-top:18px;">✅ Semak Baki RHB (Bank)</h2>
+
+    <div class="buffer-input-row">
+      <div class="label">Baki RHB</div>
+      <div class="buffer-input-wrap" style="width:150px;">
+        <span>RM</span>
+        <input type="number" inputmode="decimal" step="0.01" min="0" id="rhbBalanceInput" placeholder="0.00">
+      </div>
+    </div>
+
+    <div class="row-line" id="rhbReconcileRow" style="display:none;">
+      <div class="label" id="rhbReconcileLabel">Berbanding catatan</div>
+      <div class="value" id="rhbReconcileValue">RM0.00</div>
+    </div>
+  </div>
+
+  <!-- MAYBANK -->
+  <div class="card maybank">
+    <h2>💳 Maybank</h2>
+
+    <div class="row-line" id="maybankAvailableRefRow">
+      <div class="label">Available (Awal)</div>
+      <div class="value" id="maybankAvailableRef">RM0.00</div>
+    </div>
+
+    <div class="shortfall-banner" id="shortfallBanner" style="display:none;">
+      <div class="big" id="shortfallAmount">⚠️ Short by RM0.00</div>
+      <div class="small">Income tak cukup untuk RHB reserves.</div>
+    </div>
+
+    <div class="maybank-divider"></div>
+
+    <h2 style="margin-top:18px;">🔀 Pergerakan Maybank</h2>
+
+    <div id="maybankMovementList"></div>
+    <div class="empty-state" id="emptyMaybankMovements" style="display:none;">Belum ada pergerakan.</div>
+    <button class="add-expense-btn" id="addMaybankMovementBtn">+ Catat Pergerakan Maybank</button>
+
+    <div class="row-line">
+      <div class="label">Total Masuk</div>
+      <div class="value" id="maybankTotalIn">RM0.00</div>
+    </div>
+    <div class="row-line">
+      <div class="label">Total Keluar</div>
+      <div class="value" id="maybankTotalOut">RM0.00</div>
+    </div>
+    <div class="row-line">
+      <div class="label">Net Movement</div>
+      <div class="value" id="maybankNetMovement">RM0.00</div>
+    </div>
+    <div class="row-line total">
+      <div class="label">Baki Maybank Sepatutnya</div>
+      <div class="value" id="maybankExpectedBalance">RM0.00</div>
+    </div>
+
+    <div class="maybank-divider"></div>
+
+    <h2 style="margin-top:18px;">🧮 Kira Perbelanjaan Sebenar</h2>
+
+    <div class="buffer-input-row">
+      <div class="label">Baki Maybank</div>
+      <div class="buffer-input-wrap" style="width:150px;">
+        <span>RM</span>
+        <input type="number" inputmode="decimal" step="0.01" min="0" id="maybankBalanceInput" placeholder="0.00">
+      </div>
+    </div>
+
+    <div class="row-line" id="maybankReconcileRow" style="display:none;">
+      <div class="label" id="maybankReconcileLabel">Berbanding catatan</div>
+      <div class="value" id="maybankReconcileValue">RM0.00</div>
+    </div>
+
+    <p class="hint" id="maybankEmptyHint" style="margin-top:10px; margin-bottom:0;"></p>
+
+    <div id="maybankBalanceResultBlock" class="result-block" style="display:none;">
+      <div class="result-label">Baki Tinggal untuk Berbelanja</div>
+      <div class="result-value positive" id="maybankBalanceBig">RM0.00</div>
+      <div class="result-note" id="maybankBalanceBigNote"></div>
+    </div>
+
+    <div class="row-line total" id="maybankSpentRow" style="display:none;">
+      <div class="label">Anggaran Dah Dibelanjakan</div>
+      <div class="value" id="maybankSpentValue">RM0.00</div>
+    </div>
+
+    <div class="shortfall-banner" id="maybankSurplusBanner" style="display:none;">
+      <div class="big" id="maybankSurplusAmount">ℹ️ Baki lebih RM0.00</div>
+      <div class="small">Lebih tinggi dari sepatutnya — semak semula.</div>
+    </div>
+  </div>
+
+  <!-- ASNB -->
+  <div class="card asnb">
+    <h2>💰 ASNB</h2>
+    <div id="asnbList"></div>
+    <div class="empty-state" id="emptyAsnb" style="display:none;">Belum ada catatan.</div>
+    <button class="add-expense-btn" id="addAsnbBtn">+ Catat Transaksi ASNB</button>
+
+    <div class="row-line">
+      <div class="label">Total Masuk</div>
+      <div class="value" id="asnbTotalIn">RM0.00</div>
+    </div>
+    <div class="row-line">
+      <div class="label">Total Keluar</div>
+      <div class="value" id="asnbTotalOut">RM0.00</div>
+    </div>
+    <div class="row-line total">
+      <div class="label">Baki (ikut catatan)</div>
+      <div class="value" id="asnbNetTotal">RM0.00</div>
+    </div>
+
+    <div class="buffer-input-row" style="margin-top:10px;">
+      <div class="label">Baki Sebenar (ikut app ASNB)</div>
+      <div class="buffer-input-wrap" style="width:150px;">
+        <span>RM</span>
+        <input type="number" inputmode="decimal" step="0.01" min="0" id="asnbBalanceInput" placeholder="0.00">
+      </div>
+    </div>
+  </div>
+
+  <!-- TNG -->
+  <div class="card tng">
+    <h2>🚗 TNG Go+</h2>
+    <div id="tngList"></div>
+    <div class="empty-state" id="emptyTng" style="display:none;">Belum ada catatan.</div>
+    <button class="add-expense-btn" id="addTngBtn">+ Catat Transaksi TNG</button>
+
+    <div class="row-line">
+      <div class="label">Total Masuk (Reload)</div>
+      <div class="value" id="tngTotalIn">RM0.00</div>
+    </div>
+    <div class="row-line">
+      <div class="label">Total Keluar</div>
+      <div class="value" id="tngTotalOut">RM0.00</div>
+    </div>
+    <div class="row-line total">
+      <div class="label">Baki (ikut catatan)</div>
+      <div class="value" id="tngNetTotal">RM0.00</div>
+    </div>
+
+    <div class="buffer-input-row" style="margin-top:10px;">
+      <div class="label">Baki Sebenar (ikut app TNG)</div>
+      <div class="buffer-input-wrap" style="width:150px;">
+        <span>RM</span>
+        <input type="number" inputmode="decimal" step="0.01" min="0" id="tngBalanceInput" placeholder="0.00">
+      </div>
+    </div>
+  </div>
+
+  <!-- SHOPEEPAY MONEY+ -->
+  <div class="card shopeepay">
+    <h2>🛍️ ShopeePay Money+</h2>
+    <div id="spList"></div>
+    <div class="empty-state" id="emptySp" style="display:none;">Belum ada catatan.</div>
+    <button class="add-expense-btn" id="addSpBtn">+ Catat Transaksi ShopeePay Money+</button>
+
+    <div class="row-line">
+      <div class="label">Total Masuk</div>
+      <div class="value" id="spTotalIn">RM0.00</div>
+    </div>
+    <div class="row-line">
+      <div class="label">Total Keluar</div>
+      <div class="value" id="spTotalOut">RM0.00</div>
+    </div>
+    <div class="row-line total">
+      <div class="label">Baki (ikut catatan)</div>
+      <div class="value" id="spNetTotal" style="color:var(--orange);">RM0.00</div>
+    </div>
+
+    <div class="buffer-input-row" style="margin-top:10px;">
+      <div class="label">Baki Sebenar (ikut app ShopeePay)</div>
+      <div class="buffer-input-wrap" style="width:150px;">
+        <span>RM</span>
+        <input type="number" inputmode="decimal" step="0.01" min="0" id="spBalanceInput" placeholder="0.00">
+      </div>
+    </div>
+  </div>
+
+
+  <!-- OVERALL PERIOD SUMMARY -->
+  <div class="card">
+    <button class="overall-toggle" id="overallToggle">
+      <h2 style="margin:0;" id="overallTitle">📊 Overall Summary (Nov 2026 – May 2027)</h2>
+      <span class="chev">▾</span>
+    </button>
+    <div class="overall-body" id="overallBody">
+      <div class="overall-grid">
+        <div class="overall-item">
+          <div class="label">Total Income</div>
+          <div class="value" id="ovIncome">RM0.00</div>
+        </div>
+        <div class="overall-item">
+          <div class="label">Total Commitments</div>
+          <div class="value" id="ovExpenses">RM0.00</div>
+        </div>
+        <div class="overall-item">
+          <div class="label">Total Commitments Dibayar</div>
+          <div class="value" id="ovPaid">RM0.00</div>
+        </div>
+        <div class="overall-item">
+          <div class="label">Total Commitments Belum Dibayar</div>
+          <div class="value" id="ovOutstanding">RM0.00</div>
+        </div>
+        <div class="overall-item">
+          <div class="label">Total RHB Required</div>
+          <div class="value" id="ovRhb">RM0.00</div>
+        </div>
+        <div class="overall-item">
+          <div class="label">Total Anggaran Dibelanjakan (Maybank)</div>
+          <div class="value" id="ovMaybankSpent">RM0.00</div>
+        </div>
+        <div class="overall-item wide accent">
+          <div class="label">Total Perbelanjaan Lain-lain</div>
+          <div class="value" id="ovMaybank">RM0.00</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTES / CATATAN -->
+  <div class="card">
+    <h2>📝 Catatan (<span id="notesMonthLabel">November 2026</span>)</h2>
+    <textarea class="notes-textarea" id="notesInput" placeholder="Tulis catatan di sini…"></textarea>
+    <div class="notes-meta">
+      <span class="notes-count" id="notesCount">0 aksara</span>
+      <button class="notes-clear-btn" id="notesClearBtn" type="button">Kosongkan</button>
+    </div>
+  </div>
+
+  <!-- TOTAL ACCOUNT BALANCES -->
+  <div class="summary-card totals-card">
+    <h2>💰 Total Account Balances <span style="font-weight:600; color:var(--text-inverse-soft); font-size:13px; text-transform:none;">(<span id="totalsMonthLabel">Nov 2026</span>)</span></h2>
+    <div class="totals-grid">
+      <div class="totals-tile all">
+        <div class="label">Total All</div>
+        <div class="value" id="totalAllValue">RM0.00</div>
+        <div class="formula">Semua akaun</div>
+      </div>
+      <div class="totals-tile available">
+        <div class="label">Total Available</div>
+        <div class="value" id="totalAvailableValue">RM0.00</div>
+        <div class="formula">Tanpa RHB &amp; ASNB</div>
+      </div>
+    </div>
+    <div id="accountBalanceList"></div>
+    <div class="totals-warning" id="totalsWarning" style="display:none;"></div>
+    <div class="totals-footnote">Guna baki sebenar bulan ni, atau yang terkini jika belum diisi.</div>
+  </div>
+
+  <!-- MONTH ACTIONS -->
+  <div class="month-actions">
+    <button class="month-action-btn excel" id="downloadExcelBtn" type="button">⬇️ Download Excel (<span id="excelMonthLabel">Nov 2026</span>)</button>
+  </div>
+
+  <!-- RESET -->
+  <div class="card">
+    <h2>⚙️ Reset &amp; Bulan</h2>
+    <div class="reset-row">
+      <button class="reset-btn month" id="resetMonthBtn">Reset This Month</button>
+      <button class="reset-btn all" id="resetAllBtn">Reset All Data</button>
+    </div>
+    <div class="reset-row" style="margin-top:10px;">
+      <button class="reset-btn delete-month" id="deleteMonthBtn">🗑️ Delete Month (<span id="deleteMonthLabel">Nov 2026</span>)</button>
+    </div>
+  </div>
+
+  <footer class="app-footer">
+    Data dan gambar resit disimpan di pelayan Money Tracker anda, dan hanya boleh diakses oleh akaun anda.
+  </footer>
+
+</div>
+
+<!-- ACCOUNT SHEET -->
+<div class="modal-overlay" id="accountOverlay">
+  <div class="modal-box profile-box account-box" role="dialog" aria-labelledby="accountSheetTitle">
+    <h3 id="accountSheetTitle">👤 Akaun</h3>
+    <p class="profile-sub">Log masuk sebagai <b id="accountSheetUser"></b>. Anda hanya boleh melihat dan mengubah data akaun ini.</p>
+    <p class="account-msg" id="accountMsg" role="status"></p>
+
+    <div class="account-section">
+      <div class="account-section-title">📥 Import data lama</div>
+      <p class="account-note">Data dari versi lama tracker (simpanan browser). Pilih data yang <b>milik anda</b> sahaja.</p>
+      <div id="importList" class="import-list"></div>
+      <p class="account-note" id="importEmpty">Tiada data lama dijumpai dalam browser ini.</p>
+      <p class="import-status" id="importStatus" hidden></p>
+      <div class="account-row-actions">
+        <label class="profile-mini file-pick">📄 Pilih fail backup (.json)
+          <input type="file" id="importFile" accept="application/json,.json">
+        </label>
+        <button type="button" class="profile-mini" id="importWipe" hidden>🧹 Padam data lama dari browser ini</button>
+      </div>
+    </div>
+
+    <div class="account-section">
+      <button type="button" class="account-link" id="pwToggle">🔑 Tukar kata laluan</button>
+      <form id="pwForm" class="account-form" hidden>
+        <input type="password" id="pwCurrent" autocomplete="current-password" placeholder="Kata laluan semasa" required>
+        <input type="password" id="pwNew" autocomplete="new-password" placeholder="Kata laluan baru (min. 10 aksara)" required>
+        <input type="password" id="pwNew2" autocomplete="new-password" placeholder="Ulang kata laluan baru" required>
+        <button type="submit" class="profile-mini primary">Simpan kata laluan</button>
+      </form>
+      <button type="button" class="account-link" id="logoutBtn">🚪 Log keluar</button>
+      <button type="button" class="account-link danger" id="deleteAccountToggle">🗑️ Padam akaun &amp; semua data</button>
+      <form id="deleteAccountForm" class="account-form" hidden>
+        <input type="password" id="deletePassword" autocomplete="current-password" placeholder="Masukkan kata laluan untuk sahkan" required>
+        <button type="submit" class="profile-mini danger-btn">Padam akaun saya</button>
+      </form>
+    </div>
+
+    <div class="modal-actions">
+      <button class="cancel" id="accountCloseBtn" type="button">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <h3 id="modalTitle">Are you sure?</h3>
+    <p id="modalMessage">This action cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="extra" id="modalExtra" style="display:none;"></button>
+      <button class="cancel" id="modalCancel">Cancel</button>
+      <button class="confirm" id="modalConfirm">Yes, Reset</button>
+    </div>
+  </div>
+</div>
+
+<!-- RECEIPT REVIEW MODAL -->
+<div class="modal-overlay" id="receiptOverlay">
+  <div class="modal-box receipt-box">
+    <h3 id="receiptTitle">Receipt</h3>
+    <p id="receiptMeta"></p>
+    <div class="receipt-img-wrap">
+      <img id="receiptImg" alt="Receipt" style="display:none;">
+      <div class="receipt-img-msg" id="receiptImgMsg">Memuatkan…</div>
+    </div>
+    <div class="modal-actions">
+      <label class="replace" id="receiptReplaceLabel">🔄 Replace
+        <input type="file" accept="image/*" class="receipt-file" id="receiptReplaceInput">
+      </label>
+      <button class="danger" id="receiptDeleteBtn" type="button">🗑️ Delete</button>
+      <button class="cancel" id="receiptCloseBtn" type="button">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+
+</body>
+</html>
